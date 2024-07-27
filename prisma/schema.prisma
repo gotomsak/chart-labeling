@@ -14,8 +14,8 @@ datasource db {
 }
 
 
-model User {
-  id    Int     @id @default(autoincrement())
-  name  String
-  email String  @unique
+
+model Bookmark{
+  id    Int @id @default(autoincrement())
+  markDate String 
 }
