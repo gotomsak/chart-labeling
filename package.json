@@ -1,0 +1,49 @@
+{
+  "name": "chart-labeling",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.17.0",
+    "@types/sequelize": "^4.28.20",
+    "apexcharts": "^3.51.0",
+    "axios": "^1.7.2",
+    "JSONStream": "^1.3.5",
+    "lightweight-charts": "^4.1.7",
+    "mysql2": "^3.10.3",
+    "ndjson": "^2.0.0",
+    "next": "14.2.5",
+    "react": "^18",
+    "react-apexcharts": "^1.4.1",
+    "react-dom": "^18",
+    "react-window": "^1.8.10",
+    "react-window-infinite-loader": "^1.0.9",
+    "readline": "^1.3.0",
+    "recharts": "^2.12.7",
+    "sequelize": "^6.37.3",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "stream-json": "^1.8.0",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/ndjson": "^2.0.4",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/react-window": "^1.8.8",
+    "@types/react-window-infinite-loader": "^1.0.9",
+    "@types/stream-json": "^1.7.7",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5",
+    "postcss": "^8",
+    "prisma": "^5.17.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
