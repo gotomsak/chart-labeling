@@ -14,6 +14,7 @@ const LightweightChartComponent = ({ data }:any) => {
     
     const formattedData = data.map((item:any) => {
       // 'yyyy-mm-dd hh:mm'形式の日付をUNIXタイムスタンプに変換する
+      // 元データをUNIXタイムにする修正が必要
       const [date, time] = item.time.split(' ');
       const [year, month, day] = date.split('-').map(Number);
       const [hours, minutes] = time.split(':').map(Number);
