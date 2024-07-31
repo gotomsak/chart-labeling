@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { FixedSizeList as List } from 'react-window';
-import InfiniteLoader from 'react-window-infinite-loader';
+// import InfiniteLoader from 'react-window-infinite-loader';
 import axios from 'axios';
 import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
@@ -9,45 +9,47 @@ import { CandleType, GetResponse } from '@/app/api/candles/route';
 import LightweightChartComponent from './LightweightChartComponent';
 
 
-const dataTest = [
-  {
-    time: '2023-07-01',
-    open: 10,
-    high: 20,
-    low: 30,
-    close: 15
-  },
-  {
-    time: '2023-07-02',
-    open: 10,
-    high: 20,
-    low: 30,
-    close: 15
-  },
-  // 追加データポイント
-];
 
-const fetchMoreData = async (startIndex: number, stopIndex: number) => {
-  const response = await axios.get(`/api/candles?start=${startIndex}&end=${stopIndex}`);
+const fetchMoreData = async (startIndex: number, stopIndex: number, timeFrame: string) => {
+  const response = await axios.get(`/api/candles?start=${startIndex}&end=${stopIndex}&time_frame=${timeFrame}`);
   return response.data;
 };
 
+export interface ChartsCandle{
+  data1: CandleType[], data2: CandleType[], data3: CandleType[]
+}
+
 
 const CandleChart = () => {
-  const [data, setData] = useState<CandleType[]>([]);
+  const [data, setData] = useState<{ data1: CandleType[], data2: CandleType[], data3: CandleType[] }>({
+    data1: [], data2: [], data3: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedData, setSelectedData] = useState(null);
 
   useEffect(() => {
-    fetchMoreData(0, 100000).then(newData => {
-      setData(newData)
-      console.log(newData)
-    });
+    const fetchAll = async () => {
+      setIsLoading(true);
+      const result = { data1: [], data2: [], data3: [] }
+      result.data1 = await fetchMoreData(0, 100000, '5T')
+      result.data2 = await fetchMoreData(0, Math.round(100000 / 12), '1H')
+      result.data3 = await fetchMoreData(0, Math.round(100000 / 48), '4H')
+      setData(result)
+      setIsLoading(false);
+    }
+    console.log("test")
+    fetchAll()
   }, []);
-
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div>
-      <LightweightChartComponent data={data} />
+      {data.data1.length !== 0 && data.data2.length !== 0 && data.data3.length !== 0 &&
+        <LightweightChartComponent data={data}  />
+      }
+
     </div>
   );
 };

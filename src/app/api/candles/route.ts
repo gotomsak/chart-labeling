@@ -8,6 +8,7 @@ import fs from 'fs';
 import ndjson from 'ndjson';
 import JSONStream from 'JSONStream';
 import readline from 'readline';
+import { UTCTimestamp } from 'lightweight-charts';
 
 
 //[{ x: date, y: [O,H,L,C] }]
@@ -18,31 +19,18 @@ export interface GetResponse {
   }[]
 }
 
-export interface CandleType
-  {
-    time: string,
-    open: number,
-    high: number,
-    low: number,
-    close: number
-  }
+export interface CandleType {
+  time: UTCTimestamp,
+  open: number,
+  high: number,
+  low: number,
+  close: number
+}
 
-
-export const GET = async (req: Request) => {
-  console.log(req)
-  const { searchParams } = new URL(req.url);
-  const start = parseInt(searchParams.get('start') || '0', 10);
-  const end = parseInt(searchParams.get('end') || '10', 10);
-
-
-  // データを生成（startとendに基づいてデータをフィルタリング）
-
-  const dataFile = 'src/data/GBPJPY.5.json'; // JSONファイルのパス
-
+const createReadLine = (dataFile: string, start: number, end: number): Promise<unknown> => {
   const result: CandleType[] = [];
-
   let index = 0;
-
+  
   return new Promise((resolve, reject) => {
 
     if (!fs.existsSync(dataFile)) {
@@ -84,6 +72,25 @@ export const GET = async (req: Request) => {
         reject(new Error('Error processing data chunk'));
       }
     });
-
   });
+}
+
+export const GET = async (req: Request) => {
+  console.log(req)
+  const { searchParams } = new URL(req.url);
+  const start = parseInt(searchParams.get('start') || '0', 10);
+  const end = parseInt(searchParams.get('end') || '10', 10);
+  const time_frame = searchParams.get('time_frame');
+
+  // データを生成（startとendに基づいてデータをフィルタリング）
+
+  if (time_frame === '5T') {
+    return createReadLine('src/data/GBPJPY.5.json', start, end)
+  }
+  if (time_frame === '1H') {
+    return createReadLine('src/data/GBPJPY.1h.json', start, end)
+  }
+  if (time_frame === '4H') {
+    return createReadLine('src/data/GBPJPY.4h.json', start, end)
+  }
 };
