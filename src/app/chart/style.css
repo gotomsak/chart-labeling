@@ -1,0 +1,13 @@
+.container {
+  display: flex;
+  flex-direction: row; /* 水平方向に配置 */
+  height: 100vh; /* 高さを全画面に設定 */
+}
+.column {
+  flex: 1; /* 各列が均等に広がるように設定 */
+  border-right: 1px solid #ccc; /* 右側に境界線を追加 */
+  padding: 20px;
+}
+.column:last-child {
+  border-right: none; /* 最後の列には境界線を追加しない */
+}

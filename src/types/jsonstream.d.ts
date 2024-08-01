@@ -1,4 +1,4 @@
-declare module 'JSONStream'
+// declare module 'JSONStream'
 
 // {
 //   import { Stream } from 'stream';

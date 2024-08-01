@@ -1,13 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+'use client'
+import { useContext, useEffect, useRef } from 'react';
 import { createChart, IChartApi, Time } from 'lightweight-charts';
 import { CandleType } from '@/app/api/candles/route';
+import { ChartClickDataContext } from '@/provider/ChartClickDataProvider';
+
 
 interface LightweightChartComponentProps {
   data: CandleType[];
 }
 
-const LightweightChartComponent: React.FC<LightweightChartComponentProps> = ({ data }) => {
+const LightweightChartComponent= ({ data }:LightweightChartComponentProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const { chartClickDataState, chartClickDataDispatch} = useContext(ChartClickDataContext);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -29,11 +33,12 @@ const LightweightChartComponent: React.FC<LightweightChartComponentProps> = ({ d
         from: oldestTime as Time,
         to: newestTime as Time,
       });
-      chart.subscribeClick((param:any) => {
+      chart.subscribeClick((param: any) => {
         if (param.time) {
           console.log(param.seriesData)
           const seriesDataMap = param.seriesData.get(candleSeries);
           console.log(seriesDataMap)
+          chartClickDataDispatch({type:"setData", payload: seriesDataMap})
           const { open, high, low, close } = seriesDataMap
           console.log(close)
           const clickedTime = new Date(param.time * 1000).toISOString();
@@ -42,7 +47,7 @@ const LightweightChartComponent: React.FC<LightweightChartComponentProps> = ({ d
         }
       });
     }
-    
+
 
     return () => {
       chart.remove();

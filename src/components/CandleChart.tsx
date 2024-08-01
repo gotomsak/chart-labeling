@@ -1,10 +1,7 @@
 'use client'
-import React, { useState, useEffect } from 'react';
-import { FixedSizeList as List } from 'react-window';
+import { useState, useEffect } from 'react';
 // import InfiniteLoader from 'react-window-infinite-loader';
 import axios from 'axios';
-import Chart from 'react-apexcharts';
-import { ApexOptions } from 'apexcharts';
 import { CandleType, GetResponse } from '@/app/api/candles/route';
 import LightweightChartComponent from './LightweightChartComponent';
 
@@ -25,7 +22,6 @@ const CandleChart = () => {
     data1: [], data2: [], data3: []
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedData, setSelectedData] = useState(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -40,6 +36,7 @@ const CandleChart = () => {
     console.log("test")
     fetchAll()
   }, []);
+  
   if (isLoading) {
     return <div>Loading...</div>;
   }

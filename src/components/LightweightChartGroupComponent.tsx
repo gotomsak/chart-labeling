@@ -1,8 +1,7 @@
+'use client'
 import React, { useEffect, useRef } from 'react';
 import { createChart, IChartApi, ISeriesApi, isUTCTimestamp, MouseEventParams, Time } from 'lightweight-charts';
 import { ChartsCandle } from './CandleChart';
-import { timeStamp } from 'console';
-
 
 
 const LightweightChartGroupComponent = (data: { data: ChartsCandle }) => {

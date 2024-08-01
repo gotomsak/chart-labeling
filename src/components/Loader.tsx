@@ -2,9 +2,8 @@
 import InfiniteLoader from 'react-window-infinite-loader';
 import axios from 'axios';
 
-import React, { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { CandleType } from '@/app/api/candles/route';
-import { JsxElement } from 'typescript';
 
 
 const fetchMoreData = async (startIndex: number, stopIndex: number) => {
