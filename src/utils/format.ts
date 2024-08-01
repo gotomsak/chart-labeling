@@ -14,3 +14,11 @@
     //     close: item.close,
     //   };
     // });
+
+
+    // const fromTime = data.data.data1[0].time;
+        // const toTime = new Date(fromTime).getTime() + (36000 * 7 * 1000);
+        // chart.timeScale().setVisibleRange({
+        //   from: fromTime,
+        //   to: toTime as Time,
+        // })

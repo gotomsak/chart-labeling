@@ -15,7 +15,7 @@ const fetchMoreData = async (startIndex: number, stopIndex: number, timeFrame: s
   return response.data;
 };
 
-export interface ChartsCandle{
+export interface ChartsCandle {
   data1: CandleType[], data2: CandleType[], data3: CandleType[]
 }
 
@@ -46,8 +46,17 @@ const CandleChart = () => {
 
   return (
     <div>
-      {data.data1.length !== 0 && data.data2.length !== 0 && data.data3.length !== 0 &&
-        <LightweightChartComponent data={data}  />
+      <h1>5 Minute Chart</h1>
+      {data.data1.length !== 0 &&
+        <LightweightChartComponent data={data.data1} />
+      }
+      <h1>1 Hour Chart</h1>
+      {data.data2.length !== 0 &&
+        <LightweightChartComponent data={data.data2} />
+      }
+      <h1>4 Hour Chart</h1>
+      {data.data3.length !== 0 &&
+        <LightweightChartComponent data={data.data2} />
       }
 
     </div>
