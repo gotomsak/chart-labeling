@@ -2,7 +2,7 @@ import { createReadStream } from 'fs';
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import readline from 'readline';
-import { UTCTimestamp } from 'lightweight-charts';
+import { Time, UTCTimestamp } from 'lightweight-charts';
 
 export interface GetResponse {
   data: {
@@ -12,7 +12,7 @@ export interface GetResponse {
 }
 
 export interface CandleType {
-  time: UTCTimestamp,
+  time: Time,
   open: number,
   high: number,
   low: number,

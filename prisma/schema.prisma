@@ -15,7 +15,8 @@ datasource db {
 
 
 
-model Bookmark{
-  id    Int @id @default(autoincrement())
-  time String 
+model Bookmark {
+  id    Int      @id @default(autoincrement())
+  time  String
+  date  DateTime @default(now())
 }

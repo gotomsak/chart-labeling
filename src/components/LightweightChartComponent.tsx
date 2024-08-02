@@ -27,6 +27,7 @@ const LightweightChartComponent= ({ data }:LightweightChartComponentProps) => {
 
     if (data.length !== 0) {
       const oldestTime = data[0].time;
+      console.log(data[0].time)
       const newestTime = data[1000].time;
 
       chart.timeScale().setVisibleRange({

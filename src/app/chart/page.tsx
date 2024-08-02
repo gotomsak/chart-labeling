@@ -4,16 +4,23 @@ import CandleChart from "@/components/CandleChart";
 import './style.css'
 import { useContext, useEffect, useState } from "react";
 import { ChartClickDataContext, ChartClickDataProvider } from "@/provider/ChartClickDataProvider";
-import { registerBookmark } from "../api/bookmark/fetch";
+import { findManyBookmark, registerBookmark } from "../api/bookmark/fetch";
+import FindManyBookmarkView from "@/components/FindManyBookmarkView";
+import { UTCTimestamp } from "lightweight-charts";
+import { BookmarkData } from "../api/bookmark/route";
 
 const ChartPage = () => {
 
   // const { chartClickData, setChartClickData } = useChartClickData();  
   const { chartClickDataState } = useContext(ChartClickDataContext);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [bookMarks, setBookmarks] = useState<BookmarkData[]>([])
   useEffect(() => {
     setIsLoading(false);
+    findManyBookmark().then((res)=>{
+      console.log(res)
+      setBookmarks(res)
+    })
   }, [])
 
   useEffect(() => {
@@ -41,7 +48,11 @@ const ChartPage = () => {
             onClick={async() => {
               const result = await registerBookmark({ time: chartClickDataState.time })
               console.log(result)
-            }}>この時間でBookmark</button>
+            }}>この時間でBookmark
+          </button>
+          <FindManyBookmarkView times={bookMarks}>
+
+          </FindManyBookmarkView>
         </div>
       </div>
     </div>

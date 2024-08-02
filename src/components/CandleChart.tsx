@@ -16,6 +16,11 @@ export interface ChartsCandle {
   data1: CandleType[], data2: CandleType[], data3: CandleType[]
 }
 
+// startTimeと配列の長さで指定でfetchさせたい
+interface props{
+  startTime: number,
+  barNumber: number
+}
 
 const CandleChart = () => {
   const [data, setData] = useState<{ data1: CandleType[], data2: CandleType[], data3: CandleType[] }>({
