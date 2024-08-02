@@ -17,5 +17,5 @@ datasource db {
 
 model Bookmark{
   id    Int @id @default(autoincrement())
-  markDate String 
+  time String 
 }
