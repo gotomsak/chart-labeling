@@ -25,7 +25,7 @@ const createReadLine = (dataFile: string, start: number, end: number): Promise<R
   
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(dataFile)) {
-      return reject(new Error('File not found'));
+      reject(NextResponse.json({ error: 'Invalid time frame' }, { status: 400 }))
     }
     console.log('Starting stream from file:', dataFile);
 
@@ -77,19 +77,12 @@ export const GET = async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const start = parseInt(searchParams.get('start') || '0', 10);
   const end = parseInt(searchParams.get('end') || '10', 10);
+  const pair = searchParams.get('pair');
+  const reference = searchParams.get('reference')
   const time_frame = searchParams.get('time_frame');
 
   try {
-    if (time_frame === '5T') {
-      return createReadLine('src/data/GBPJPY.5.json', start, end);
-    }
-    if (time_frame === '1H') {
-      return createReadLine('src/data/GBPJPY.1h.json', start, end);
-    }
-    if (time_frame === '4H') {
-      return createReadLine('src/data/GBPJPY.4h.json', start, end);
-    }
-    return NextResponse.json({ error: 'Invalid time frame' }, { status: 400 });
+    return createReadLine(`src/data/${reference}/${pair}.${time_frame}.json`, start, end)
   } catch (error) {
     return NextResponse.json({ error: error }, { status: 500 });
   }

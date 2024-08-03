@@ -35,7 +35,7 @@ const ChartPage = () => {
     <div>
       <div className="container">
         <div className="column">
-          <CandleChart></CandleChart>
+          <CandleChart pair="GBPJPY" reference="master"></CandleChart>
         </div>
         <div className="column">
           <h2>close</h2>
@@ -50,9 +50,10 @@ const ChartPage = () => {
               console.log(result)
             }}>この時間でBookmark
           </button>
+          
           <FindManyBookmarkView times={bookMarks}>
-
           </FindManyBookmarkView>
+
         </div>
       </div>
     </div>

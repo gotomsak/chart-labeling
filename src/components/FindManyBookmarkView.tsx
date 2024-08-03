@@ -10,7 +10,7 @@ interface props {
 
 const FindManyBookmarkView = (props: props) => {
   const handleTimestampClick = (timestamp: BookmarkData) => {
-    alert(`Timestamp clicked: ${timestamp}`);
+    alert(`Timestamp clicked: ${timestamp.time}`);
   };
   return (
     <div className="utc-timestamp-list">

@@ -20,3 +20,20 @@ model Bookmark {
   time  String
   date  DateTime @default(now())
 }
+
+model ChartMaster {
+  id    Int      @id @default(autoincrement())
+  pair String
+  chartLabeling ChartLabeling[]
+}
+
+model ChartLabeling{
+  id    Int      @id @default(autoincrement())
+  fileName String @unique
+  name String
+  chartMasterId Int
+  chartMaster ChartMaster @relation(fields: [chartMasterId], references: [id])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  deleted_at DateTime?
+}
