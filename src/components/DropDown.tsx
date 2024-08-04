@@ -1,21 +1,14 @@
-import React, { useState } from 'react';
+import React, { ChangeEventHandler, useState } from 'react';
 
 interface props {
   options: string[]
-  onSelect: (value: string) => null
+  select: string;
+  onSelect: ChangeEventHandler<HTMLSelectElement>
 }
-const Dropdown = ({ options, onSelect }: props) => {
-  const [selectedOption, setSelectedOption] = useState(options[0]);
-
-  const handleSelect = (event:any) => {
-    const selectedValue = event.target.value;
-    setSelectedOption(selectedValue);
-    onSelect(selectedValue);
-  };
-
+const Dropdown = ({ options, select, onSelect }: props) => {
   return (
     <div>
-      <select value={selectedOption} onChange={handleSelect}>
+      <select value={select} onChange={onSelect}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}

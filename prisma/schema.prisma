@@ -13,27 +13,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-
 model Bookmark {
-  id    Int      @id @default(autoincrement())
-  time  String
-  date  DateTime @default(now())
+  id   Int      @id @default(autoincrement())
+  time String
+  date DateTime @default(now())
 }
 
 model ChartMaster {
-  id    Int      @id @default(autoincrement())
-  pair String
+  id            Int             @id @default(autoincrement())
+  pair          String          @unique
   chartLabeling ChartLabeling[]
 }
 
-model ChartLabeling{
-  id    Int      @id @default(autoincrement())
-  fileName String @unique
-  name String
+model ChartLabeling {
+  id            Int         @id @default(autoincrement())
+  fileName      String      @unique
+  name          String
   chartMasterId Int
-  chartMaster ChartMaster @relation(fields: [chartMasterId], references: [id])
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  deleted_at DateTime?
+  chartMaster   ChartMaster @relation(fields: [chartMasterId], references: [id])
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  deleted_at    DateTime?
 }

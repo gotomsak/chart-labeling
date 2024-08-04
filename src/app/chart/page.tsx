@@ -8,6 +8,7 @@ import { findManyBookmark, registerBookmark } from "../api/bookmark/fetch";
 import FindManyBookmarkView from "@/components/FindManyBookmarkView";
 import { UTCTimestamp } from "lightweight-charts";
 import { BookmarkData } from "../api/bookmark/route";
+import CreateChartLabeling from "@/components/CreateChartLabeling";
 
 const ChartPage = () => {
 
@@ -50,6 +51,7 @@ const ChartPage = () => {
               console.log(result)
             }}>この時間でBookmark
           </button>
+          <CreateChartLabeling></CreateChartLabeling>
           
           <FindManyBookmarkView times={bookMarks}>
           </FindManyBookmarkView>

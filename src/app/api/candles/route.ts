@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import readline from 'readline';
 import { Time, UTCTimestamp } from 'lightweight-charts';
+import prisma from "@/utils/db";
+import path from 'path';
 
 export interface GetResponse {
   data: {
@@ -22,7 +24,7 @@ export interface CandleType {
 const createReadLine = (dataFile: string, start: number, end: number): Promise<Response> => {
   const result: CandleType[] = [];
   let index = 0;
-  
+
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(dataFile)) {
       reject(NextResponse.json({ error: 'Invalid time frame' }, { status: 400 }))
@@ -73,6 +75,15 @@ const createReadLine = (dataFile: string, start: number, end: number): Promise<R
   });
 }
 
+async function copyFile(source: any, destination: any) {
+  try {
+    await fs.promises.copyFile(source, destination);
+    console.log(`File copied from ${source} to ${destination}`);
+  } catch (error: any) {
+    throw new Error(`Failed to copy file: ${error.message}`);
+  }
+}
+
 export const GET = async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const start = parseInt(searchParams.get('start') || '0', 10);
@@ -87,3 +98,42 @@ export const GET = async (req: Request) => {
     return NextResponse.json({ error: error }, { status: 500 });
   }
 };
+
+export interface CreateChartLabelingRequestBody {
+  pair: string
+  name: string
+}
+export const POST = async (req: Request) => {
+  const body: CreateChartLabelingRequestBody = await req.json();
+  try {
+    const result = await prisma.$transaction(async (prisma) => {
+      const chartMaster = await prisma.chartMaster.upsert({
+        where: { pair: body.pair },
+        update: {},
+        create: {
+          pair: body.pair,
+        },
+      })
+      const createdAt = new Date()
+      const fileName = `${createdAt.toISOString()}_${body.pair}_${body.name}.json`
+      const destinationFilePath = path.join('src/data/labeling/', fileName);
+      await copyFile(`src/data/master/${body.pair}.5.json`, destinationFilePath);
+
+      const chartLabeling = await prisma.chartLabeling.create({
+        data: {
+          fileName: fileName,
+          name: body.name,
+          chartMasterId: chartMaster.id,
+          created_at: createdAt
+        },
+      })
+      return chartLabeling
+    })
+    return NextResponse.json(result, { status: 200 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: `Failed to insert data: ${error}` }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
