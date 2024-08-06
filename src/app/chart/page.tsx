@@ -33,7 +33,6 @@ const ChartPage = () => {
     const barNum = 200000
     const result = { data1: [], data2: [], data3: [] }
 
-    // 親コンポーネントからデータを渡す形に変える？
     result.data1 = await fetchMoreData(
       0,
       barNum,
