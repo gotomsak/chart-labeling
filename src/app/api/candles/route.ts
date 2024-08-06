@@ -89,11 +89,20 @@ export const GET = async (req: Request) => {
   const start = parseInt(searchParams.get('start') || '0', 10);
   const end = parseInt(searchParams.get('end') || '10', 10);
   const pair = searchParams.get('pair');
-  const reference = searchParams.get('reference')
+  const reference = searchParams.get('reference');
   const time_frame = searchParams.get('time_frame');
-
+  const id = searchParams.get('id');
+  console.log(reference)
   try {
-    return createReadLine(`src/data/${reference}/${pair}.${time_frame}.json`, start, end)
+    if (reference !== "labeling") {
+      return createReadLine(`src/data/${reference}/${pair}.${time_frame}.json`, start, end)
+    }
+    if (id !== null){
+      const findChart = await prisma.chartLabeling.findUnique({ where: { id: Number(id) } })
+      return createReadLine(`src/data/${reference}/${findChart?.fileName}`, start, end)
+    }
+    return NextResponse.json({ error: "reference not found" }, { status: 500 });
+
   } catch (error) {
     return NextResponse.json({ error: error }, { status: 500 });
   }

@@ -4,8 +4,8 @@ import Form from "./Form"
 import { createChartLabeling } from "@/app/api/candles/fetch"
 
 const CreateChartLabeling = () => {
-  const [selectedData, setSelectedData] = useState("GBPJPY")
-  const [dropData, setDropData] = useState(['GBPJPY'])
+  const [selectedData, setSelectedData] = useState({key: "GBPJPY", value: "GBPJPY"})
+  const [dropData, setDropData] = useState([{key: "GBPJPY", value: "GBPJPY"}])
   
   const handleSelect = (event: any) => {
     setSelectedData(event.target.value)
@@ -13,7 +13,7 @@ const CreateChartLabeling = () => {
   const handleButton = async(e: any)=>{
     const res = await createChartLabeling({
       name: text,
-      pair: selectedData
+      pair: selectedData.value
     })
     console.log(res)
     window.alert(res)
@@ -25,7 +25,7 @@ const CreateChartLabeling = () => {
     <div className="m-5">
       <h1>CreateChartLabeling</h1>
       <Dropdown
-        select={selectedData}
+        select={selectedData.value}
         options={dropData}
         onSelect={handleSelect}
       ></Dropdown>
