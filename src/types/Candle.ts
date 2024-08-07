@@ -1,7 +1,7 @@
-import { UTCTimestamp } from "lightweight-charts";
+import { Time, UTCTimestamp } from "lightweight-charts";
 
 export interface CandleType {
-  time: UTCTimestamp,
+  time: Time,
   open: number,
   high: number,
   low: number,

@@ -5,7 +5,7 @@ import { useContext, useEffect, useState } from "react";
 import { ChartClickDataContext, ChartClickDataProvider } from "@/provider/ChartClickDataProvider";
 import { findManyBookmark, registerBookmark } from "../api/bookmark/fetch";
 import FindManyBookmarkView from "@/components/FindManyBookmarkView";
-import { UTCTimestamp } from "lightweight-charts";
+import { Time, UTCTimestamp } from "lightweight-charts";
 import { BookmarkData } from "../api/bookmark/route";
 import CreateChartLabeling from "@/components/CreateChartLabeling";
 import Dropdown, { FromOption } from "@/components/DropDown";
@@ -14,6 +14,8 @@ import { fetchMoreData } from "../api/candles/fetch";
 import { CandleType } from "@/types/Candle";
 import LightweightChartComponent from "@/components/LightweightChartComponent";
 import Button from '@/components/Button';
+import { labelingFetch } from '../api/candles/labeling/fetch';
+import { labelingPost } from '../api/candles/labeling/route';
 
 const ChartPage = () => {
 
@@ -27,6 +29,12 @@ const ChartPage = () => {
   const [data, setData] = useState<{ data1: CandleType[], data2: CandleType[], data3: CandleType[] }>({
     data1: [], data2: [], data3: []
   });
+
+  const [labelingPost, setLabelingPost] = useState<labelingPost>({
+    from: { time: 0 as Time, label: 0 },
+    to: { time: 0 as Time, label: 0 }
+  });
+  const [lock, setLock] = useState({ from: false, to: false });
 
   const fetchAll = async (chart_id: string | undefined) => {
     setIsLoading(true);
@@ -63,7 +71,26 @@ const ChartPage = () => {
 
 
   useEffect(() => {
-    console.log(chartClickDataState)
+    let setLabel: labelingPost = labelingPost
+    if (!lock.from) {
+      setLabel = {
+        ...setLabel,
+        from: { ...setLabel?.from, time: chartClickDataState.time }
+      }
+    }
+    if (!lock.to) {
+      setLabel = {
+        ...setLabel,
+        to: { ...setLabel?.to, time: chartClickDataState.time }
+      }
+      // setLabelingPost(
+      //   {
+      //     ...labelingPost,
+      //     to: { ...labelingPost?.to, time: chartClickDataState.time }
+      //   }
+      // )
+    }
+    setLabelingPost(setLabel)
   }, [chartClickDataState])
 
   if (isLoading) {
@@ -91,7 +118,7 @@ const ChartPage = () => {
           <h2>close</h2>
           {chartClickDataState.close}
           <h2>time</h2>
-          {chartClickDataState.time}
+          {chartClickDataState.time.toString()}
           <br></br>
           <div className='m-2'>
             <Button text="この時間でBookmark"
@@ -114,6 +141,34 @@ const ChartPage = () => {
               fetchAll(selectedLabel)
             }}></Button>
           </div>
+
+          <div className='m-2'>
+            <h1>from</h1>
+            <h2>time</h2>
+            {labelingPost.from.time.toString()}
+            <h2>label</h2>
+            {labelingPost.from.label}
+
+            <h1>to</h1>
+            <h2>time</h2>
+            {labelingPost.to.time.toString()}
+            <h2>label</h2>
+            {labelingPost.to.label}
+            <br></br>
+          </div>
+          <Button text={lock.from ? 'アンロックfrom' : 'ロックfrom'} onClick={() => {
+            setLock({ ...lock, from: !lock.from })
+          }}></Button>
+          <Button text={lock.to ? 'アンロックto' : 'ロックto'} onClick={() => {
+            setLock({ ...lock, to: !lock.to })
+          }}></Button>
+
+          <Button text='登録' onClick={() => {
+            if (selectedLabel !== undefined) {
+              labelingFetch(labelingPost, Number(selectedLabel))
+            }
+
+          }}></Button>
           <CreateChartLabeling></CreateChartLabeling>
 
           <FindManyBookmarkView times={bookMarks}>
@@ -121,7 +176,7 @@ const ChartPage = () => {
 
         </div>
       </div>
-    </div>
+    </div >
   )
 }
 

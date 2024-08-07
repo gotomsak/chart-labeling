@@ -42,6 +42,7 @@ const createReadLine = (dataFile: string, start: number, end: number): Promise<R
       try {
         if (index >= start && index < end) {
           const jsonObject = JSON.parse(line);
+          console.log(jsonObject)
           result.push({
             time: jsonObject['datetime'],
             open: parseFloat(jsonObject['Open']),
@@ -55,6 +56,7 @@ const createReadLine = (dataFile: string, start: number, end: number): Promise<R
         if (index >= end) {
           rl.close();
           fileStream.destroy();
+          console.log(result)
           resolve(NextResponse.json(result, { status: 200 }));
         }
       } catch (error) {
