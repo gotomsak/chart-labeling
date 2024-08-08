@@ -7,14 +7,14 @@ export interface FromOption {
 
 interface Props {
   options: FromOption[];
-  select: string;
+  value: string;
   onSelect: ChangeEventHandler<HTMLSelectElement>;
 }
 
-const Dropdown = ({ options, select, onSelect }: Props) => {
+const Dropdown = ({ options, value, onSelect }: Props) => {
   return (
     <div>
-      <select value={select} onChange={onSelect}>
+      <select value={value} onChange={onSelect}>
         {options.map((option) => (
           <option key={option.key} value={option.value}>
             {option.key}

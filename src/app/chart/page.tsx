@@ -31,8 +31,9 @@ const ChartPage = () => {
   });
 
   const [labelingPost, setLabelingPost] = useState<labelingPost>({
-    from: { time: 0 as Time, label: 0 },
-    to: { time: 0 as Time, label: 0 }
+    from: 0 as Time,
+    to: 0 as Time,
+    label: 0
   });
   const [lock, setLock] = useState({ from: false, to: false });
 
@@ -75,13 +76,13 @@ const ChartPage = () => {
     if (!lock.from) {
       setLabel = {
         ...setLabel,
-        from: { ...setLabel?.from, time: chartClickDataState.time }
+        from: chartClickDataState.time
       }
     }
     if (!lock.to) {
       setLabel = {
         ...setLabel,
-        to: { ...setLabel?.to, time: chartClickDataState.time }
+        to: chartClickDataState.time
       }
       // setLabelingPost(
       //   {
@@ -129,7 +130,7 @@ const ChartPage = () => {
             ></Button>
           </div>
           <div className='m-2'>
-            <Dropdown options={labels} select={selectedLabel || "ラベリング中のchartデータはありません"} onSelect={(e: any) => {
+            <Dropdown options={labels} value={selectedLabel || "-1"} onSelect={(e: any) => {
               console.log(e.target.value)
               localStorage.setItem("chart_id", e.target.value)
               setSelectedLabel(e.target.value)
@@ -145,15 +146,13 @@ const ChartPage = () => {
           <div className='m-2'>
             <h1>from</h1>
             <h2>time</h2>
-            {labelingPost.from.time.toString()}
-            <h2>label</h2>
-            {labelingPost.from.label}
+            {labelingPost.from.toString()}
 
             <h1>to</h1>
             <h2>time</h2>
-            {labelingPost.to.time.toString()}
+            {labelingPost.to.toString()}
             <h2>label</h2>
-            {labelingPost.to.label}
+            {labelingPost.label}
             <br></br>
           </div>
           <Button text={lock.from ? 'アンロックfrom' : 'ロックfrom'} onClick={() => {
@@ -162,7 +161,15 @@ const ChartPage = () => {
           <Button text={lock.to ? 'アンロックto' : 'ロックto'} onClick={() => {
             setLock({ ...lock, to: !lock.to })
           }}></Button>
-
+          <div className='m-2'>
+            <Dropdown
+              options={
+                [{ key: "買い", value: "1" }, { key: "売り", value: "2" }, { key: "利確", value: "3" }]
+              } value={labelingPost.label.toString()}
+              onSelect={(e: any) => {
+                setLabelingPost({ ...labelingPost, label: e.target.value })
+              }}></Dropdown>
+          </div>
           <Button text='登録' onClick={() => {
             if (selectedLabel !== undefined) {
               labelingFetch(labelingPost, Number(selectedLabel))

@@ -8,14 +8,16 @@ export interface labeling {
   label: number;
 }
 
-export interface labelingPost{
-  from: labeling;
-  to: labeling;
+export interface labelingPost {
+  from: Time;
+  to: Time;
+  label: number;
 }
 
 
 export const POST = async (req: Request) => {
   const labeling: labelingPost = await req.json()
+  console.log(labeling)
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
 
@@ -24,29 +26,30 @@ export const POST = async (req: Request) => {
       id: Number(id)
     }
   })
-  //console.log(findfile)
+
   const jsonData = fs.readFileSync(`src/data/labeling/${findfile?.fileName}`, 'utf8');
   const lines = jsonData.split('\n').filter(line => line.trim() !== '');
   let data = lines.map(line => JSON.parse(line));
-  // let data = JSON.parse(jsonData);
 
-  data = data.map((record: any) => {
-    if (labeling.from.time <= record.time && labeling.to.time >= record.time){
+
+  data = data.map((record: { datetime: Time, Open: number, High: number, Low: number, Close: number, Volume: number, label: number }) => {
+    if (labeling.from <= record.datetime && labeling.to >= record.datetime) {
       console.log(record)
-      return{...record, label: labeling.from.label}
-    }else{
+      console.log(labeling)
+      return { ...record, label: Number(labeling.label) }
+    } else {
       return record
     }
-    // for (let i = 0; i < labeling.length; i++) {
-    //   if (labeling[i].time === record.time) {
-    //     return { ...record, label: labeling[i].label }
-    //   }
-    // }
-    
   })
-  // console.log(data)
-  fs.writeFileSync(`src/data/labeling/${findfile?.fileName}`, data.map(record => JSON.stringify(record)).join('\n'), 'utf8');
+  const formatJSON = (objArray: any) => {
+    return objArray.map((obj: any) => {
+      const entries = Object.entries(obj).map(([key, value]) => `"${key}": ${value}`);
+      return `{${entries.join(', ')}}`;
+    }).join('\n');
+  };
   
+  fs.writeFileSync(`src/data/labeling/${findfile?.fileName}`, formatJSON(data), 'utf8');
+
   return NextResponse.json(200)
 
 }

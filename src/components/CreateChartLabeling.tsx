@@ -25,7 +25,7 @@ const CreateChartLabeling = () => {
     <div className="m-5">
       <h1>CreateChartLabeling</h1>
       <Dropdown
-        select={selectedData.value}
+        value={selectedData.value}
         options={dropData}
         onSelect={handleSelect}
       ></Dropdown>

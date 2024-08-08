@@ -102,6 +102,7 @@ export const GET = async (req: Request) => {
     if (id !== null){
       const findChart = await prisma.chartLabeling.findUnique({ where: { id: Number(id) } })
       return createReadLine(`src/data/${reference}/${findChart?.fileName}`, start, end)
+      //return createReadLine(`src/data/${reference}/2024-08-04T18:49:50.792Z_GBPJPY_はじめのいっぽ.json`, start, end)
     }
     return NextResponse.json({ error: "reference not found" }, { status: 500 });
 
