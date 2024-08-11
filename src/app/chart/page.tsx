@@ -19,16 +19,18 @@ import { labelingPost } from '../api/candles/labeling/route';
 
 const ChartPage = () => {
 
-  // const { chartClickData, setChartClickData } = useChartClickData();
   const { chartClickDataState } = useContext(ChartClickDataContext);
   const [isLoading, setIsLoading] = useState(true);
   const [bookMarks, setBookmarks] = useState<BookmarkData[]>([])
   const [labels, setLabels] = useState<FromOption[]>([])
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>()
-
+  const [selectPair, setSelectPair] = useState("GBPJPY");
+  const [selectBookmark, setSelectBookmark] = useState<BookmarkData>()
   const [data, setData] = useState<{ data1: CandleType[], data2: CandleType[], data3: CandleType[] }>({
     data1: [], data2: [], data3: []
   });
+
+  const [barNum, setBarNum] = useState(200000)
 
   const [labelingPost, setLabelingPost] = useState<labelingPost>({
     from: 0 as Time,
@@ -37,36 +39,38 @@ const ChartPage = () => {
   });
   const [lock, setLock] = useState({ from: false, to: false });
 
-  const fetchAll = async (chart_id: string | undefined) => {
+  const fetchAllData = async (chart_id: string | undefined, lastBookMark: number) => {
     setIsLoading(true);
-    const barNum = 200000
     const result = { data1: [], data2: [], data3: [] }
 
     result.data1 = await fetchMoreData(
-      0,
+      lastBookMark,
       barNum,
       '5',
-      "GBPJPY",
+      selectPair,
       chart_id === undefined ? "master" : "labeling",
       Number(chart_id) || undefined
     )
-    result.data2 = await fetchMoreData(0, Math.round(barNum / 12), '1h', "GBPJPY", "master")
-    result.data3 = await fetchMoreData(0, Math.round(barNum / 48), '4h', "GBPJPY", "master")
+    result.data2 = await fetchMoreData(0, Math.round(barNum / 12), '1h', selectPair, "master")
+    result.data3 = await fetchMoreData(0, Math.round(barNum / 48), '4h', selectPair, "master")
     setData(result)
     setIsLoading(false);
   }
 
   useEffect(() => {
-    findManyBookmark().then((res) => {
-      console.log(res)
-      setBookmarks(res)
-    })
-    getLabels().then((res: FromOption[]) => {
-      console.log(res)
-      setLabels(res)
-      fetchAll(res.length === 0 ? undefined : localStorage.getItem('chart_id') || "0")
-      setSelectedLabel(res.length === 0 ? undefined : localStorage.getItem('chart_id') || "0")
-    })
+    const firstEffect = async () => {
+
+      const getLabelsRes = await getLabels()
+      setLabels(getLabelsRes)
+      const bookmarkRes = await findManyBookmark(Number(localStorage.getItem('chart_id') || "0"))
+      setBookmarks(bookmarkRes)
+      console.log(bookmarkRes)
+      fetchAllData(getLabelsRes.length === 0 ? undefined : localStorage.getItem('chart_id') || "0",
+        bookmarkRes.length === 0 ? 1420156800 : bookmarkRes.slice(-1)[0].time)
+      setSelectedLabel(getLabelsRes.length === 0 ? undefined : localStorage.getItem('chart_id') || "0")
+    }
+    firstEffect()
+
 
   }, [])
 
@@ -84,12 +88,6 @@ const ChartPage = () => {
         ...setLabel,
         to: chartClickDataState.time
       }
-      // setLabelingPost(
-      //   {
-      //     ...labelingPost,
-      //     to: { ...labelingPost?.to, time: chartClickDataState.time }
-      //   }
-      // )
     }
     setLabelingPost(setLabel)
   }, [chartClickDataState])
@@ -101,18 +99,35 @@ const ChartPage = () => {
   return (
     <div>
       <div className="container">
+
         <div className="column">
           <h1>5 Minute Chart</h1>
           {data.data1.length !== 0 &&
-            <LightweightChartComponent data={data.data1} />
+            <LightweightChartComponent data={data.data1} loadMoreItems={
+              (startIndex: number, stopIndex: number) => {
+                fetchMoreData(startIndex, stopIndex, '5', selectPair, selectedLabel === undefined ? "master" : "labeling", Number(selectedLabel) || undefined).then(newData => {
+                  console.log('5 chart loading')
+                  setData(prevData => ({ ...prevData, data1: newData }))
+                })
+              }
+            }
+            />
           }
           <h1>1 Hour Chart</h1>
           {data.data2.length !== 0 &&
-            <LightweightChartComponent data={data.data2} />
+            <LightweightChartComponent data={data.data2} loadMoreItems={(startIndex: number, stopIndex: number) => {
+              fetchMoreData(startIndex, stopIndex, '1h', selectPair, "master").then(newData => {
+                setData(prevData => ({ ...prevData, data2: newData }))
+              })
+            }} />
           }
           <h1>4 Hour Chart</h1>
           {data.data3.length !== 0 &&
-            <LightweightChartComponent data={data.data2} />
+            <LightweightChartComponent data={data.data3} loadMoreItems={(startIndex: number, stopIndex: number) => {
+              fetchMoreData(startIndex, stopIndex, '4h', selectPair, "master").then(newData => {
+                setData(prevData => ({ ...prevData, data3: newData }))
+              })
+            }} />
           }
         </div>
         <div className="column">
@@ -124,22 +139,47 @@ const ChartPage = () => {
           <div className='m-2'>
             <Button text="この時間でBookmark"
               onClick={async () => {
-                const result = await registerBookmark({ time: chartClickDataState.time })
+                const result = await registerBookmark({ time: chartClickDataState.time, chartLabelingId: Number(selectedLabel) })
                 console.log(result)
               }}
             ></Button>
           </div>
           <div className='m-2'>
-            <Dropdown options={labels} value={selectedLabel || "-1"} onSelect={(e: any) => {
-              console.log(e.target.value)
-              localStorage.setItem("chart_id", e.target.value)
-              setSelectedLabel(e.target.value)
-            }}></Dropdown>
+            <h2>bookmark select</h2>
+            <Dropdown
+              options={
+                bookMarks.map(
+                  (value) => {
+                    return {
+                      key: value.time.toLocaleString(),
+                      value: value.id.toString()
+                    }
+                  }
+                )
+              }
+              value={selectBookmark?.id.toString() || "-1"}
+              onSelect={(e: any) => {
+                console.log(e.target.value)
+                //localStorage.setItem("chart_id", e.target.value)
+                setSelectBookmark(bookMarks.filter((value) => e.target.value === value.id)[0])
+              }}></Dropdown>
+          </div>
+
+          <div className='m-2'>
+            <h2>chart select</h2>
+            <Dropdown
+              options={labels}
+              value={selectedLabel || "-1"}
+              onSelect={(e: any) => {
+                console.log(e.target.value)
+                localStorage.setItem("chart_id", e.target.value)
+                setSelectedLabel(e.target.value)
+              }}></Dropdown>
 
           </div>
           <div className='m-2'>
             <Button text='chartを再配置' onClick={() => {
-              fetchAll(selectedLabel)
+              fetchAllData(selectedLabel, selectBookmark?.id!)
             }}></Button>
           </div>
 

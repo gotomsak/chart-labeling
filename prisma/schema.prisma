@@ -14,9 +14,11 @@ datasource db {
 }
 
 model Bookmark {
-  id   Int      @id @default(autoincrement())
-  time String
-  date DateTime @default(now())
+  id              Int           @id @default(autoincrement())
+  time            String
+  date            DateTime      @default(now())
+  chartLabelingId Int
+  chartLabeling   ChartLabeling @relation(fields: [chartLabelingId], references: [id])
 }
 
 model ChartMaster {
@@ -31,6 +33,7 @@ model ChartLabeling {
   name          String
   chartMasterId Int
   chartMaster   ChartMaster @relation(fields: [chartMasterId], references: [id])
+  bookmark      Bookmark[]
   created_at    DateTime    @default(now())
   updated_at    DateTime    @updatedAt
   deleted_at    DateTime?

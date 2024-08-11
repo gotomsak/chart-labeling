@@ -4,12 +4,13 @@ import axios from 'axios';
 
 import { useState, useEffect, ReactNode } from 'react';
 import { CandleType } from '@/app/api/candles/route';
+import { fetchMoreData } from '@/app/api/candles/fetch';
 
 
-const fetchMoreData = async (startIndex: number, stopIndex: number) => {
-  const response = await axios.get(`/api/candles?start=${startIndex}&end=${stopIndex}`);
-  return response.data;
-};
+// const fetchMoreData = async (startIndex: number, stopIndex: number) => {
+//   const response = await axios.get(`/api/candles?start=${startIndex}&end=${stopIndex}`);
+//   return response.data;
+// };
 
 interface Props {
   children: ReactNode

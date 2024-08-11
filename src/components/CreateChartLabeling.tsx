@@ -4,17 +4,18 @@ import Form from "./Form"
 import { createChartLabeling } from "@/app/api/candles/fetch"
 
 const CreateChartLabeling = () => {
-  const [selectedData, setSelectedData] = useState({key: "GBPJPY", value: "GBPJPY"})
-  const [dropData, setDropData] = useState([{key: "GBPJPY", value: "GBPJPY"}])
-  
+  const [selectedData, setSelectedData] = useState({ key: "GBPJPY", value: "GBPJPY" })
+  const [dropData, setDropData] = useState([{ key: "GBPJPY", value: "GBPJPY" }])
+
   const handleSelect = (event: any) => {
     setSelectedData(event.target.value)
   };
-  const handleButton = async(e: any)=>{
+  const handleButton = async (e: any) => {
     const res = await createChartLabeling({
       name: text,
       pair: selectedData.value
     })
+    localStorage.setItem("chart_id", res.id)
     console.log(res)
     window.alert(res)
   }

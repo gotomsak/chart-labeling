@@ -21,7 +21,7 @@ export interface CandleType {
   close: number
 }
 
-const createReadLine = (dataFile: string, start: number, end: number): Promise<Response> => {
+const createReadLine = (dataFile: string, start: number, barNum: number): Promise<Response> => {
   const result: CandleType[] = [];
   let index = 0;
 
@@ -40,9 +40,9 @@ const createReadLine = (dataFile: string, start: number, end: number): Promise<R
 
     rl.on('line', (line) => {
       try {
-        if (index >= start && index < end) {
-          const jsonObject = JSON.parse(line);
-          console.log(jsonObject)
+        const jsonObject = JSON.parse(line);
+        if(jsonObject['datetime']>= start){
+          index++;
           result.push({
             time: jsonObject['datetime'],
             open: parseFloat(jsonObject['Open']),
@@ -51,12 +51,16 @@ const createReadLine = (dataFile: string, start: number, end: number): Promise<R
             close: parseFloat(jsonObject['Close'])
           });
         }
+        // if (index >= start && index < end) {
+        //   //const jsonObject = JSON.parse(line);
+        //   // console.log(jsonObject)
+          
+        // }
 
-        index++;
-        if (index >= end) {
+        if (index >= barNum) {
           rl.close();
           fileStream.destroy();
-          console.log(result)
+          // console.log(result)
           resolve(NextResponse.json(result, { status: 200 }));
         }
       } catch (error) {
@@ -66,7 +70,7 @@ const createReadLine = (dataFile: string, start: number, end: number): Promise<R
     });
 
     rl.on('close', () => {
-      if (index < end) {
+      if (index < barNum) {
         resolve(NextResponse.json(result, { status: 200 }));
       }
     });
@@ -89,20 +93,20 @@ async function copyFile(source: any, destination: any) {
 export const GET = async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const start = parseInt(searchParams.get('start') || '0', 10);
-  const end = parseInt(searchParams.get('end') || '10', 10);
   const pair = searchParams.get('pair');
   const reference = searchParams.get('reference');
   const time_frame = searchParams.get('time_frame');
   const id = searchParams.get('id');
+  const barNum = parseInt(searchParams.get('bar_num')||'200000')
+
   console.log(reference)
   try {
     if (reference !== "labeling") {
-      return createReadLine(`src/data/${reference}/${pair}.${time_frame}.json`, start, end)
+      return createReadLine(`src/data/${reference}/${pair}.${time_frame}.json`, start, barNum)
     }
     if (id !== null){
       const findChart = await prisma.chartLabeling.findUnique({ where: { id: Number(id) } })
-      return createReadLine(`src/data/${reference}/${findChart?.fileName}`, start, end)
-      //return createReadLine(`src/data/${reference}/2024-08-04T18:49:50.792Z_GBPJPY_はじめのいっぽ.json`, start, end)
+      return createReadLine(`src/data/${reference}/${findChart?.fileName}`, start, barNum)
     }
     return NextResponse.json({ error: "reference not found" }, { status: 500 });
 
@@ -139,8 +143,29 @@ export const POST = async (req: Request) => {
           created_at: createdAt
         },
       })
+
+      const fileStream = fs.createReadStream(destinationFilePath);
+      const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+      })
+
+      let datetimeValue = null;
+      for await (const line of rl) {
+        const jsonObject = JSON.parse(line);
+        datetimeValue = jsonObject.datetime;
+        break; // Exit after reading the first line
+      }
+
+      await prisma.bookmark.create({
+        data:{
+          time: datetimeValue.toString(),
+          chartLabelingId: chartLabeling.id
+        }
+      })
       return chartLabeling
     })
+
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error(error);
