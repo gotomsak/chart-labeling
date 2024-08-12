@@ -146,6 +146,7 @@ const ChartPage = () => {
           </div>
           <div className='m-2'>
             <h2>bookmark select</h2>
+            {selectBookmark?.id}
             <Dropdown
               options={
                 bookMarks.map(
@@ -161,7 +162,7 @@ const ChartPage = () => {
               onSelect={(e: any) => {
                 console.log(e.target.value)
                 //localStorage.setItem("chart_id", e.target.value)
-                setSelectBookmark(bookMarks.filter((value) => e.target.value === value.id)[0])
+                setSelectBookmark(bookMarks.filter((value) => e.target.value === value.id.toString())[0])
               }}></Dropdown>
           </div>
 

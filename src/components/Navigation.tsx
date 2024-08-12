@@ -1,22 +1,23 @@
 'use clinet'
+import { AppBar, Box, Button, Toolbar, Typography } from '@mui/material';
 import Link from 'next/link';
 
 export default function Navigation() {
   return (
-    <nav>
-      <ul>
-        <li>
-          <Link href="/">
-           Home
-          </Link>
-        </li>
-        <li>
-          <Link href="/chart">
+    <AppBar position="static">
+      <Toolbar>
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          My Website
+        </Typography>
+        <Box>
+          <Button color="inherit" component={Link} href="/">
+            Home
+          </Button>
+          <Button color="inherit" component={Link} href="/chart">
             Chart
-          </Link>
-        </li>
-        
-      </ul>
-    </nav>
+          </Button>
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 }
