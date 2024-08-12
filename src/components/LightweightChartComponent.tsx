@@ -85,10 +85,8 @@ const LightweightChartComponent = ({ data,loadMoreItems }: LightweightChartCompo
         loadMoreItems={loadMoreItems}
       >
         {({ onItemsRendered, ref }) => (
-
-
           <List
-            height={300}
+            height={0}
             itemCount={data.length}
             itemSize={35}
             width={chartContainerRef.current?.clientWidth || 0}
@@ -96,10 +94,11 @@ const LightweightChartComponent = ({ data,loadMoreItems }: LightweightChartCompo
             ref={ref}
           >
             {({ index, style }) => (
-              <div style={style}>
-                {/* グラフの下に追加情報を表示する場合 */}
-                {`Item ${index}`}
-              </div>
+              <></>
+              // <div style={style}>
+              //   {/* グラフの下に追加情報を表示する場合 */}
+              //   {`Item ${index}`}
+              // </div>
             )}
           </List>
 

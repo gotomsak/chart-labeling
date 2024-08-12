@@ -4,7 +4,6 @@ import './style.css'
 import { useContext, useEffect, useState } from "react";
 import { ChartClickDataContext, ChartClickDataProvider } from "@/provider/ChartClickDataProvider";
 import { findManyBookmark, registerBookmark } from "../api/bookmark/fetch";
-import FindManyBookmarkView from "@/components/FindManyBookmarkView";
 import { Time, UTCTimestamp } from "lightweight-charts";
 import { BookmarkData } from "../api/bookmark/route";
 import CreateChartLabeling from "@/components/CreateChartLabeling";
@@ -42,7 +41,7 @@ const ChartPage = () => {
   const fetchAllData = async (chart_id: string | undefined, lastBookMark: number) => {
     setIsLoading(true);
     const result = { data1: [], data2: [], data3: [] }
-
+    console.log(lastBookMark)
     result.data1 = await fetchMoreData(
       lastBookMark,
       barNum,
@@ -51,8 +50,8 @@ const ChartPage = () => {
       chart_id === undefined ? "master" : "labeling",
       Number(chart_id) || undefined
     )
-    result.data2 = await fetchMoreData(0, Math.round(barNum / 12), '1h', selectPair, "master")
-    result.data3 = await fetchMoreData(0, Math.round(barNum / 48), '4h', selectPair, "master")
+    result.data2 = await fetchMoreData(lastBookMark, Math.round(barNum / 12), '1h', selectPair, "master")
+    result.data3 = await fetchMoreData(lastBookMark, Math.round(barNum / 48), '4h', selectPair, "master")
     setData(result)
     setIsLoading(false);
   }
@@ -64,9 +63,9 @@ const ChartPage = () => {
       setLabels(getLabelsRes)
       const bookmarkRes = await findManyBookmark(Number(localStorage.getItem('chart_id') || "0"))
       setBookmarks(bookmarkRes)
-      console.log(bookmarkRes)
       fetchAllData(getLabelsRes.length === 0 ? undefined : localStorage.getItem('chart_id') || "0",
-        bookmarkRes.length === 0 ? 1420156800 : bookmarkRes.slice(-1)[0].time)
+        bookmarkRes.slice(-1)[0].time)
+      setSelectBookmark(bookmarkRes.slice(-1)[0])
       setSelectedLabel(getLabelsRes.length === 0 ? undefined : localStorage.getItem('chart_id') || "0")
     }
     firstEffect()
@@ -146,7 +145,6 @@ const ChartPage = () => {
           </div>
           <div className='m-2'>
             <h2>bookmark select</h2>
-            {selectBookmark?.id}
             <Dropdown
               options={
                 bookMarks.map(
@@ -180,7 +178,7 @@ const ChartPage = () => {
           </div>
           <div className='m-2'>
             <Button text='chartを再配置' onClick={() => {
-              fetchAllData(selectedLabel, selectBookmark?.id!)
+              fetchAllData(selectedLabel, Number(selectBookmark?.time))
             }}></Button>
           </div>
 
@@ -218,10 +216,6 @@ const ChartPage = () => {
 
           }}></Button>
           <CreateChartLabeling></CreateChartLabeling>
-
-          <FindManyBookmarkView times={bookMarks}>
-          </FindManyBookmarkView>
-
         </div>
       </div>
     </div >
