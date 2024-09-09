@@ -1,7 +1,10 @@
-import { Time } from "lightweight-charts"
+import { SeriesMarker, Time } from "lightweight-charts"
 import fs from 'fs';
 import prisma from "@/utils/db";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { Next } from "node_modules/mysql2/typings/mysql/lib/parsers/typeCast";
+import clientPromise from "@/utils/mongo";
+import { ObjectId } from "mongodb";
 
 export interface labeling {
   time: Time;
@@ -14,42 +17,62 @@ export interface labelingPost {
   label: number;
 }
 
+export interface LabelingPostJson {
+  time: Time,
+  position: string,
+  color: string,
+  shape: string,
+  text: string,
+}
 
+
+// labelのロード
+export const GET = async (req: NextRequest) => {
+  const labeling_id = req.nextUrl.searchParams.get("id")
+  const from = req.nextUrl.searchParams.get("from")
+  const to = req.nextUrl.searchParams.get("to")
+  const client = await clientPromise;
+  const db = client.db('FXCharts');
+  const collection = db.collection("labelings")
+  console.log("labeling" + labeling_id)
+  const res = await collection.findOne({ _id: new ObjectId(labeling_id!) })
+  console.log(res)
+  if (!res) {
+    return NextResponse.json({
+      message: "labeling data not found"
+    })
+  }
+  return NextResponse.json(res?.label, { status: 200 })
+
+}
+
+// labelの登録
 export const POST = async (req: Request) => {
-  const labeling: labelingPost = await req.json()
-  console.log(labeling)
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
+  try {
+    const labeling: SeriesMarker<Time>[] = await req.json()
+    console.log(labeling)
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
 
-  const findfile = await prisma.chartLabeling.findUnique({
-    where: {
-      id: Number(id)
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
-  })
 
-  const jsonData = fs.readFileSync(`src/data/labeling/${findfile?.fileName}`, 'utf8');
-  const lines = jsonData.split('\n').filter(line => line.trim() !== '');
-  let data = lines.map(line => JSON.parse(line));
+    const client = await clientPromise;
+    const db = client.db('FXCharts');
+    const collection = db.collection("labelings")
+    const res = await collection.updateOne(
+      { _id: new ObjectId(id!) },
+      { $set: { ["label"]: labeling } }
+    )
+    if (res.matchedCount === 0) {
 
-
-  data = data.map((record: { datetime: Time, Open: number, High: number, Low: number, Close: number, Volume: number, label: number }) => {
-    if (labeling.from <= record.datetime && labeling.to >= record.datetime) {
-      console.log(record)
-      console.log(labeling)
-      return { ...record, label: Number(labeling.label) }
-    } else {
-      return record
+      return NextResponse.json({ message: 'Document updated successfully' }, { status: 200 });
     }
-  })
-  const formatJSON = (objArray: any) => {
-    return objArray.map((obj: any) => {
-      const entries = Object.entries(obj).map(([key, value]) => `"${key}": ${value}`);
-      return `{${entries.join(', ')}}`;
-    }).join('\n');
-  };
-  
-  fs.writeFileSync(`src/data/labeling/${findfile?.fileName}`, formatJSON(data), 'utf8');
+    return NextResponse.json({ message: 'success' }, { status: 200 })
 
-  return NextResponse.json(200)
-
+  } catch (error) {
+    console.error('Error updating document:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
 }

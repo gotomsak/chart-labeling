@@ -1,10 +1,12 @@
 import { createReadStream } from 'fs';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import readline from 'readline';
 import { Time, UTCTimestamp } from 'lightweight-charts';
 import prisma from "@/utils/db";
 import path from 'path';
+import clientPromise from '@/utils/mongo';
+import { ObjectId } from 'mongodb';
 
 export interface GetResponse {
   data: {
@@ -41,15 +43,11 @@ const createReadLine = (dataFile: string, start: number, barNum: number): Promis
     rl.on('line', (line) => {
       try {
         const jsonObject = JSON.parse(line);
-        if(jsonObject['datetime']>= start){
+        if(jsonObject['time']>= start){
           index++;
-          result.push({
-            time: jsonObject['datetime'],
-            open: parseFloat(jsonObject['Open']),
-            high: parseFloat(jsonObject['High']),
-            low: parseFloat(jsonObject['Low']),
-            close: parseFloat(jsonObject['Close'])
-          });
+          result.push(
+            jsonObject          
+          );
         }
         // if (index >= start && index < end) {
         //   //const jsonObject = JSON.parse(line);
@@ -90,29 +88,47 @@ async function copyFile(source: any, destination: any) {
   }
 }
 
-export const GET = async (req: Request) => {
-  const { searchParams } = new URL(req.url);
-  const start = parseInt(searchParams.get('start') || '0', 10);
-  const pair = searchParams.get('pair');
-  const reference = searchParams.get('reference');
-  const time_frame = searchParams.get('time_frame');
-  const id = searchParams.get('id');
-  const barNum = parseInt(searchParams.get('bar_num')||'200000')
-
-  console.log(reference)
+async function createFile(destination: string, content: string) {
   try {
-    if (reference !== "labeling") {
-      return createReadLine(`src/data/${reference}/${pair}.${time_frame}.json`, start, barNum)
-    }
-    if (id !== null){
-      const findChart = await prisma.chartLabeling.findUnique({ where: { id: Number(id) } })
-      return createReadLine(`src/data/${reference}/${findChart?.fileName}`, start, barNum)
-    }
-    return NextResponse.json({ error: "reference not found" }, { status: 500 });
-
-  } catch (error) {
-    return NextResponse.json({ error: error }, { status: 500 });
+    await fs.promises.writeFile(destination, content, 'utf-8');
+    console.log(`File created at ${destination} with the provided content.`);
+  } catch (error: any) {
+    throw new Error(`Failed to create file: ${error.message}`);
   }
+}
+
+export const GET = async (req: NextRequest) => {
+  const pair = req.nextUrl.searchParams.get('pair')
+  const time_frame = req.nextUrl.searchParams.get('time_frame')
+
+  //const skip = parseInt(req.nextUrl.searchParams.get('skip') || '0', 10);
+  const time = parseInt(req.nextUrl.searchParams.get('time') || '0', 10);
+  const index = parseInt(req.nextUrl.searchParams.get('index') || '0', 10);
+
+  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '10', 10);
+  try {
+    const client = await clientPromise;
+    const db = client.db('FXCharts');
+    
+    const collection = db.collection(`${pair}_${time_frame}`);
+
+    const documents = await collection
+    .find()
+    .skip(index)
+    .limit(limit)
+    .toArray();
+
+    // const documents = await collection
+    //   .find({ time: { $gte: time } }) // Filter by time
+    //   .sort({ time: 1 }) // Sort by time in ascending order
+    //   .limit(limit)
+    //   .toArray();
+
+    return NextResponse.json(documents);
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 });
+  }
+
 };
 
 export interface CreateChartLabelingRequestBody {
@@ -133,7 +149,8 @@ export const POST = async (req: Request) => {
       const createdAt = new Date()
       const fileName = `${createdAt.toISOString()}_${body.pair}_${body.name}.json`
       const destinationFilePath = path.join('src/data/labeling/', fileName);
-      await copyFile(`src/data/master/${body.pair}.5.json`, destinationFilePath);
+      await createFile(destinationFilePath,'')
+      //await copyFile(`src/data/master/${body.pair}.5.json`, destinationFilePath);
 
       const chartLabeling = await prisma.chartLabeling.create({
         data: {
@@ -144,7 +161,7 @@ export const POST = async (req: Request) => {
         },
       })
 
-      const fileStream = fs.createReadStream(destinationFilePath);
+      const fileStream = fs.createReadStream(path.join(`src/data/master/${body.pair}.5.json`));
       const rl = readline.createInterface({
         input: fileStream,
         crlfDelay: Infinity

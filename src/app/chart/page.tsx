@@ -4,7 +4,7 @@ import './style.css'
 import { useContext, useEffect, useState } from "react";
 import { ChartClickDataContext, ChartClickDataProvider } from "@/provider/ChartClickDataProvider";
 import { findManyBookmark, registerBookmark } from "../api/bookmark/fetch";
-import { Time, UTCTimestamp } from "lightweight-charts";
+import { SeriesMarker, SeriesMarkerPosition, SeriesMarkerShape, Time, UTCTimestamp } from "lightweight-charts";
 import { BookmarkData } from "../api/bookmark/route";
 import CreateChartLabeling from "@/components/CreateChartLabeling";
 import Dropdown, { FromOption } from "@/components/DropDown";
@@ -13,8 +13,9 @@ import { fetchMoreData } from "../api/candles/fetch";
 import { CandleType } from "@/types/Candle";
 import LightweightChartComponent from "@/components/LightweightChartComponent";
 import Button from '@/components/Button';
-import { labelingFetch } from '../api/candles/labeling/fetch';
-import { labelingPost } from '../api/candles/labeling/route';
+import { getLabelingData, labelingFetch } from '../api/candles/labeling/fetch';
+import { labelingPost, LabelingPostJson } from '../api/candles/labeling/route';
+import CreateLabeling from '@/components/CreateLabeling';
 
 const ChartPage = () => {
 
@@ -29,29 +30,44 @@ const ChartPage = () => {
     data1: [], data2: [], data3: []
   });
 
-  const [barNum, setBarNum] = useState(200000)
+  const [barNum, setBarNum] = useState(20000)
 
   const [labelingPost, setLabelingPost] = useState<labelingPost>({
     from: 0 as Time,
     to: 0 as Time,
     label: 0
   });
-  const [lock, setLock] = useState({ from: false, to: false });
 
-  const fetchAllData = async (chart_id: string | undefined, lastBookMark: number) => {
+  const [labelingPostJson, setLabelingPostJson] = useState<LabelingPostJson[]>([])
+  const [lock, setLock] = useState({ from: false, to: false });
+  const [labelData, setLabelData] = useState<SeriesMarker<Time>[]>([])
+  const [nowIndex, setNowIndex] = useState({ data1: 0, data2: 0, data3: 0 })
+
+  const fetchAllData = async (labeling_id: string | undefined, lastBookMark: number) => {
     setIsLoading(true);
     const result = { data1: [], data2: [], data3: [] }
     console.log(lastBookMark)
     result.data1 = await fetchMoreData(
-      lastBookMark,
-      barNum,
-      '5',
+      '5m',
       selectPair,
-      chart_id === undefined ? "master" : "labeling",
-      Number(chart_id) || undefined
+      lastBookMark.toString(),
+      barNum.toString(),
     )
-    result.data2 = await fetchMoreData(lastBookMark, Math.round(barNum / 12), '1h', selectPair, "master")
-    result.data3 = await fetchMoreData(lastBookMark, Math.round(barNum / 48), '4h', selectPair, "master")
+    result.data2 = await fetchMoreData(
+      '1h',
+      selectPair,
+      lastBookMark.toString(),
+      //Math.round(barNum / 12).toString()
+      barNum.toString()
+    )
+
+    result.data3 = await fetchMoreData(
+      '4h',
+      selectPair,
+      lastBookMark.toString(),
+      //Math.round(barNum / 48).toString()
+      barNum.toString()
+    )
     setData(result)
     setIsLoading(false);
   }
@@ -60,13 +76,20 @@ const ChartPage = () => {
     const firstEffect = async () => {
 
       const getLabelsRes = await getLabels()
-      setLabels(getLabelsRes)
-      const bookmarkRes = await findManyBookmark(Number(localStorage.getItem('chart_id') || "0"))
+
+      setLabels(getLabelsRes.data)
+      
+      const bookmarkRes = await findManyBookmark(localStorage.getItem('labeling_id')!)
+    
+      const labelingRes = await getLabelingData(localStorage.getItem('labeling_id')!)
+
+      setLabelData(labelingRes.data)
+      setNowIndex({ data1: bookmarkRes.slice(-1)[0].index, data2: bookmarkRes.slice(-1)[0].index, data3: bookmarkRes.slice(-1)[0].index })
       setBookmarks(bookmarkRes)
-      fetchAllData(getLabelsRes.length === 0 ? undefined : localStorage.getItem('chart_id') || "0",
-        bookmarkRes.slice(-1)[0].time)
-      setSelectBookmark(bookmarkRes.slice(-1)[0])
-      setSelectedLabel(getLabelsRes.length === 0 ? undefined : localStorage.getItem('chart_id') || "0")
+      fetchAllData(getLabelsRes.data.length === 0 ? undefined : localStorage.getItem('labeling_id') || "0",
+        bookmarkRes.slice(-1)[0].index)
+
+      setSelectedLabel(getLabelsRes.data.length === 0 ? undefined : localStorage.getItem('labeling_id') || "0")
     }
     firstEffect()
 
@@ -74,25 +97,42 @@ const ChartPage = () => {
   }, [])
 
 
+  // useEffect(() => {
+  //   let setLabel: labelingPost = labelingPost
+  //   if (!lock.from) {
+  //     setLabel = {
+  //       ...setLabel,
+  //       from: chartClickDataState.time
+  //     }
+  //   }
+  //   if (!lock.to) {
+  //     setLabel = {
+  //       ...setLabel,
+  //       to: chartClickDataState.time
+  //     }
+  //   }
+  //   setLabelingPost(setLabel)
+  // }, [chartClickDataState])
   useEffect(() => {
-    let setLabel: labelingPost = labelingPost
-    if (!lock.from) {
-      setLabel = {
-        ...setLabel,
-        from: chartClickDataState.time
-      }
-    }
-    if (!lock.to) {
-      setLabel = {
-        ...setLabel,
-        to: chartClickDataState.time
-      }
-    }
-    setLabelingPost(setLabel)
+
+    console.log(chartClickDataState)
   }, [chartClickDataState])
 
   if (isLoading) {
     return <div>Loading...</div>;
+  }
+
+  const setLabelHandler = (time: Time, position: SeriesMarkerPosition, color: string, shape: SeriesMarkerShape, text: string) => {
+    setLabelData((prevData) => [
+      ...prevData,
+      {
+        time: time,
+        position: position,
+        color: color,
+        shape: shape,
+        text: text
+      }
+    ])
   }
 
   return (
@@ -102,31 +142,146 @@ const ChartPage = () => {
         <div className="column">
           <h1>5 Minute Chart</h1>
           {data.data1.length !== 0 &&
-            <LightweightChartComponent data={data.data1} loadMoreItems={
-              (startIndex: number, stopIndex: number) => {
-                fetchMoreData(startIndex, stopIndex, '5', selectPair, selectedLabel === undefined ? "master" : "labeling", Number(selectedLabel) || undefined).then(newData => {
-                  console.log('5 chart loading')
-                  setData(prevData => ({ ...prevData, data1: newData }))
-                })
+            <LightweightChartComponent data={data.data1} labelData={labelData} loadMoreItems={
+              (movement: boolean) => {
+                if (movement) {
+                  fetchMoreData(
+                    '5m',
+                    selectPair,
+                    (nowIndex.data1 + barNum).toString(),
+                    barNum.toString()
+                  )
+                    .then(newData => {
+                      console.log('5 chart loading')
+                      setNowIndex({ ...nowIndex, data1: nowIndex.data1 + barNum })
+                      setData(prevData => ({ ...prevData, data1: newData }))
+                    })
+                } else {
+
+                  fetchMoreData(
+                    '5m',
+                    selectPair,
+                    ((nowIndex.data1 - barNum) >= 0 ? nowIndex.data1 - barNum : 0).toString(),
+                    barNum.toString()
+                  )
+                    .then(newData => {
+                      console.log('5 chart loading')
+                      setNowIndex({ ...nowIndex, data1: (nowIndex.data1 - barNum) >= 0 ? nowIndex.data1 - barNum : 0 })
+                      setData(prevData => ({ ...prevData, data1: newData }))
+                    })
+                }
+
+                // if (Number(bookMarks[0].time) <= time) {
+                //   console.log("test")
+                //   console.log("timeLoad: " + time.toString())
+                //   fetchMoreData(
+                //     '5m',
+                //     selectPair,
+                //     time.toString(),
+                //     barNum.toString()
+                //   )
+                //     .then(newData => {
+                //       console.log('5 chart loading')
+                //       setData(prevData => ({ ...prevData, data1: newData }))
+                //     })
+                // } else {
+                //   fetchMoreData(
+                //     '5m',
+                //     selectPair,
+                //     bookMarks[0].time.toString(),
+                //     barNum.toString()
+                //   )
+                //     .then(newData => {
+                //       console.log('5 chart loading')
+                //       setData(prevData => ({ ...prevData, data1: newData }))
+                //     })
+                // }
               }
             }
             />
           }
           <h1>1 Hour Chart</h1>
           {data.data2.length !== 0 &&
-            <LightweightChartComponent data={data.data2} loadMoreItems={(startIndex: number, stopIndex: number) => {
-              fetchMoreData(startIndex, stopIndex, '1h', selectPair, "master").then(newData => {
-                setData(prevData => ({ ...prevData, data2: newData }))
-              })
-            }} />
+            <LightweightChartComponent data={data.data2} labelData={labelData} loadMoreItems={
+              (movement: boolean) => {
+                if (movement) {
+                  fetchMoreData(
+                    '1h',
+                    selectPair,
+                    (nowIndex.data2 + barNum).toString(),
+                    barNum.toString()
+                    //(nowIndex.data2 + Math.round(barNum / 12)).toString(),
+                    //Math.round(barNum / 12).toString()
+                  ).then(newData => {
+                    setNowIndex(
+                      {
+                        ...nowIndex,
+                        data2: nowIndex.data2 + barNum
+                        //data2: (nowIndex.data2 + Math.round(barNum / 12))
+                      })
+                    setData(prevData => ({ ...prevData, data2: newData }))
+                  })
+                } else {
+                  fetchMoreData(
+                    '1h',
+                    selectPair,
+                    ((nowIndex.data2 - barNum) >= 0 ? nowIndex.data2 - barNum : 0).toString(),
+                    barNum.toString()
+                    // ((nowIndex.data2 - Math.round(barNum / 12)) >= 0 ? nowIndex.data2 - Math.round(barNum / 12) : 0).toString(),
+                    // Math.round(barNum / 12).toString()
+                  ).then(newData => {
+                    setNowIndex(
+                      {
+                        ...nowIndex,
+                        data2: (nowIndex.data2 - barNum) >= 0 ? nowIndex.data2 - barNum : 0
+                        //data2: (nowIndex.data2 - Math.round(barNum / 12)) >= 0 ? (nowIndex.data2 - Math.round(barNum / 12)) : 0
+                      })
+                    setData(prevData => ({ ...prevData, data2: newData }))
+                  })
+
+                }
+              }} />
           }
           <h1>4 Hour Chart</h1>
           {data.data3.length !== 0 &&
-            <LightweightChartComponent data={data.data3} loadMoreItems={(startIndex: number, stopIndex: number) => {
-              fetchMoreData(startIndex, stopIndex, '4h', selectPair, "master").then(newData => {
-                setData(prevData => ({ ...prevData, data3: newData }))
-              })
-            }} />
+            <LightweightChartComponent data={data.data3} labelData={labelData} loadMoreItems={
+              (movement: boolean) => {
+                if (movement) {
+                  fetchMoreData(
+                    '4h',
+                    selectPair,
+                    (nowIndex.data3 + barNum).toString(),
+                    barNum.toString()
+                    // (nowIndex.data3 + Math.round(barNum / 48)).toString(),
+                    // Math.round(barNum / 48).toString()
+                  ).then(newData => {
+                    setNowIndex(
+                      {
+                        ...nowIndex,
+                        data3: nowIndex.data2 + barNum
+                        //data3: nowIndex.data3 + Math.round(barNum / 48)
+                      })
+                    setData(prevData => ({ ...prevData, data3: newData }))
+                  })
+                } else {
+                  fetchMoreData(
+                    '4h',
+                    selectPair,
+                    ((nowIndex.data3 - barNum) >= 0 ? nowIndex.data3 - barNum : 0).toString(),
+                    barNum.toString()
+                    // ((nowIndex.data3 - Math.round(barNum / 48)) >= 0 ? nowIndex.data3 - Math.round(barNum / 48) : 0).toString(),
+                    // Math.round(barNum / 48).toString()
+                  ).then(newData => {
+                    setNowIndex(
+                      {
+                        ...nowIndex,
+                        data3: (nowIndex.data3 - barNum) >= 0 ? nowIndex.data3 - barNum : 0
+                        //data3: (nowIndex.data3 - Math.round(barNum / 48)) >= 0 ? nowIndex.data3 - Math.round(barNum / 48) : 0
+                      })
+                    setData(prevData => ({ ...prevData, data3: newData }))
+                  })
+                }
+              }} />
           }
         </div>
         <div className="column">
@@ -143,7 +298,7 @@ const ChartPage = () => {
               }}
             ></Button>
           </div>
-          <div className='m-2'>
+          {/* <div className='m-2'>
             <h2>bookmark select</h2>
             <Dropdown
               options={
@@ -162,27 +317,28 @@ const ChartPage = () => {
                 //localStorage.setItem("chart_id", e.target.value)
                 setSelectBookmark(bookMarks.filter((value) => e.target.value === value.id.toString())[0])
               }}></Dropdown>
-          </div>
+          </div> */}
 
           <div className='m-2'>
-            <h2>chart select</h2>
+            <h2>label select</h2>
             <Dropdown
               options={labels}
               value={selectedLabel || "-1"}
               onSelect={(e: any) => {
                 console.log(e.target.value)
-                localStorage.setItem("chart_id", e.target.value)
+                localStorage.setItem("labeling_id", e.target.value)
                 setSelectedLabel(e.target.value)
               }}></Dropdown>
 
           </div>
           <div className='m-2'>
-            <Button text='chartを再配置' onClick={() => {
-              fetchAllData(selectedLabel, Number(selectBookmark?.time))
+            <Button text='labelを再配置' onClick={() => {
+              // fetchAllData(selectedLabel, Number(selectBookmark?.time))
+
             }}></Button>
           </div>
 
-          <div className='m-2'>
+          {/* <div className='m-2'>
             <h1>from</h1>
             <h2>time</h2>
             {labelingPost.from.toString()}
@@ -193,14 +349,14 @@ const ChartPage = () => {
             <h2>label</h2>
             {labelingPost.label}
             <br></br>
-          </div>
-          <Button text={lock.from ? 'アンロックfrom' : 'ロックfrom'} onClick={() => {
+          </div> */}
+          {/* <Button text={lock.from ? 'アンロックfrom' : 'ロックfrom'} onClick={() => {
             setLock({ ...lock, from: !lock.from })
           }}></Button>
           <Button text={lock.to ? 'アンロックto' : 'ロックto'} onClick={() => {
             setLock({ ...lock, to: !lock.to })
-          }}></Button>
-          <div className='m-2'>
+          }}></Button> */}
+          {/* <div className='m-2'>
             <Dropdown
               options={
                 [{ key: "買い", value: "1" }, { key: "売り", value: "2" }, { key: "利確", value: "3" }]
@@ -208,14 +364,71 @@ const ChartPage = () => {
               onSelect={(e: any) => {
                 setLabelingPost({ ...labelingPost, label: e.target.value })
               }}></Dropdown>
+          </div> */}
+          <div className='m-2'>
+            <Button text='買い' onClick={() => {
+              console.log(labelData)
+              setLabelHandler(chartClickDataState.time, "belowBar", '#2196F3', 'arrowUp', `buy ${chartClickDataState.time}`)
+            }}></Button>
           </div>
+          <div className='m-2'>
+            <Button text='売り' onClick={() => {
+              setLabelHandler(chartClickDataState.time, "aboveBar", '#e91e63', 'arrowDown', `sell ${chartClickDataState.time}`)
+            }}></Button>
+          </div>
+          <div className='m-2'>
+            <Button text='利確' onClick={() => {
+              setLabelHandler(chartClickDataState.time, "belowBar", '#f68410', 'circle', `profit ${chartClickDataState.time}`)
+            }}></Button>
+          </div>
+
+
+
           <Button text='登録' onClick={() => {
-            if (selectedLabel !== undefined) {
-              labelingFetch(labelingPost, Number(selectedLabel))
-            }
+            labelingFetch(labelData, selectedLabel!)
+            // if (selectedLabel !== undefined) {
+            //   const res = []
+            //   for (let i = 0; i < data.data1.length; i++) {
+            //     if (data.data1[i].time > labelingPost.to) {
+            //       break;
+            //     }
+            //     if (data.data1[i].time >= labelingPost.from && data.data1[i].time <= labelingPost.to) {
+            //       if (labelingPost.label.toString() === "1") {
+            //         res.push({
+            //           time: data.data1[i].time,
+            //           position: "belowBar",
+            //           color: '#2196F3',
+            //           shape: 'arrowUp',
+            //           text: `buy ${data.data1[i].time}`
+            //         })
+            //       }
+            //       if (labelingPost.label.toString() === "2") {
+            //         res.push({
+            //           time: data.data1[i].time,
+            //           position: "aboveBar",
+            //           color: '#e91e63',
+            //           shape: 'arrowDown',
+            //           text: `sell ${data.data1[i].time}`
+            //         })
+            //       }
+            //       if (labelingPost.label.toString() === "3") {
+            //         res.push({
+            //           time: data.data1[i].time,
+            //           position: "belowBar",
+            //           color: '#f68410',
+            //           shape: 'circle',
+            //           text: ` ${data.data1[i].time}`
+            //         })
+            //       }
+
+            //     }
+            //   }
+            //   labelingFetch(res, Number(selectedLabel))
+            // }
 
           }}></Button>
-          <CreateChartLabeling></CreateChartLabeling>
+          <CreateLabeling></CreateLabeling>
+          {/* <CreateChartLabeling></CreateChartLabeling> */}
         </div>
       </div>
     </div >

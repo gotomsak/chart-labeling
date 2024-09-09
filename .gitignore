@@ -39,3 +39,6 @@ src/data
 
 .env
 database/
+mongo/
+mongo_db/
+*storybook.log

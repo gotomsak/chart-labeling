@@ -12,9 +12,9 @@ export const registerBookmark = async (body: BookmarkRequestBody) => {
   }
 }
 
-export const findManyBookmark = async (chart_id:number) => {
+export const findManyBookmark = async (labeling_id:string) => {
   try {
-    const response = await axios.get(`/api/bookmark?chart_id=${chart_id}`)
+    const response = await axios.get(`/api/bookmark?id=${labeling_id}`)
     return response.data
   } catch (error) {
     console.log(error)
