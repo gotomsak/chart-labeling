@@ -12,12 +12,25 @@ interface LightweightChartComponentProps {
 
 }
 
+const calculate200MA = (data: CandleType[]) => {
+  const maData = [];
+  for (let i = 199; i < data.length; i++) {
+    const slice = data.slice(i - 199, i + 1);
+    const sum = slice.reduce((acc, candle) => acc + candle.close, 0);
+    const maValue = sum / 200;
+    maData.push({ time: data[i].time, value: maValue });
+  }
+  return maData;
+};
+
+
 const LightweightChartComponent = ({ data, labelData, loadMoreItems }: LightweightChartComponentProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const { chartClickDataState, chartClickDataDispatch } = useContext(ChartClickDataContext);
 
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<any>(null);
+  const maSeriesRef = useRef<any>(null);
   // const isItemLoaded = useCallback((index: number) => !!data[index], [data]);
 
   const handleLabelData = () => {
@@ -76,10 +89,15 @@ const LightweightChartComponent = ({ data, labelData, loadMoreItems }: Lightweig
       });
 
       const candleSeries = chart.addCandlestickSeries();
+      const maSeries = chart.addLineSeries({
+        color: 'rgba(0, 0, 255, 0.5)',  // You can customize the color of the MA line
+        lineWidth: 2,
+      });
       candleSeries.setMarkers(labelData)
       //candleSeries.setData(data);
       chartRef.current = chart;
       candleSeriesRef.current = candleSeries;
+      maSeriesRef.current = maSeries;
 
       chart.subscribeClick(handleChartClick);
 
@@ -154,7 +172,8 @@ const LightweightChartComponent = ({ data, labelData, loadMoreItems }: Lightweig
         from: oldestTime as Time,
         to: newestTime as Time,
       });
-      
+      const maData = calculate200MA(data);
+      maSeriesRef.current.setData(maData);
 
     }
     handleLabelData()

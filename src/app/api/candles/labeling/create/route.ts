@@ -16,9 +16,11 @@ export const POST = async (req: NextRequest) => {
       const res = await db.collection("labelings").insertOne(
         {
           name: body["labelingName"],
-          bookmarks: [{ name: "先頭", time: min_time[0].minValue, index: 0 }]
+          bookmarks: [{ name: "先頭", time: min_time[0].minValue, index: 0}],
+          label:[] 
         }
       );
+      console.log(res)
       return NextResponse.json(res, { status: 200 })
     }
     return NextResponse.json({ error: 'chart data not found' }, { status: 404 })

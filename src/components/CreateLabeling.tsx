@@ -17,9 +17,9 @@ const CreateLabeling = () => {
       labelingName: text,
       pair: selectedData.value
     })
-    localStorage.setItem("labeling_id", res.insertedId)
-    console.log(res)
-    window.alert(res)
+    localStorage.setItem("labeling_id", res.data.insertedId)
+    window.alert("labelを切り替えます")
+    window.location.reload()
   }
 
 

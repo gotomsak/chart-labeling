@@ -16,6 +16,8 @@ import Button from '@/components/Button';
 import { getLabelingData, labelingFetch } from '../api/candles/labeling/fetch';
 import { labelingPost, LabelingPostJson } from '../api/candles/labeling/route';
 import CreateLabeling from '@/components/CreateLabeling';
+import { fileCreate } from '../api/file/fetch';
+import { kMaxLength } from 'buffer';
 
 const ChartPage = () => {
 
@@ -31,15 +33,8 @@ const ChartPage = () => {
   });
 
   const [barNum, setBarNum] = useState(20000)
+  const [fromTo, setFromTo] = useState<{ from: Time, to: Time }>({from: '0', to:'0'})
 
-  const [labelingPost, setLabelingPost] = useState<labelingPost>({
-    from: 0 as Time,
-    to: 0 as Time,
-    label: 0
-  });
-
-  const [labelingPostJson, setLabelingPostJson] = useState<LabelingPostJson[]>([])
-  const [lock, setLock] = useState({ from: false, to: false });
   const [labelData, setLabelData] = useState<SeriesMarker<Time>[]>([])
   const [nowIndex, setNowIndex] = useState({ data1: 0, data2: 0, data3: 0 })
 
@@ -78,9 +73,9 @@ const ChartPage = () => {
       const getLabelsRes = await getLabels()
 
       setLabels(getLabelsRes.data)
-      
+
       const bookmarkRes = await findManyBookmark(localStorage.getItem('labeling_id')!)
-    
+
       const labelingRes = await getLabelingData(localStorage.getItem('labeling_id')!)
 
       setLabelData(labelingRes.data)
@@ -97,22 +92,6 @@ const ChartPage = () => {
   }, [])
 
 
-  // useEffect(() => {
-  //   let setLabel: labelingPost = labelingPost
-  //   if (!lock.from) {
-  //     setLabel = {
-  //       ...setLabel,
-  //       from: chartClickDataState.time
-  //     }
-  //   }
-  //   if (!lock.to) {
-  //     setLabel = {
-  //       ...setLabel,
-  //       to: chartClickDataState.time
-  //     }
-  //   }
-  //   setLabelingPost(setLabel)
-  // }, [chartClickDataState])
   useEffect(() => {
 
     console.log(chartClickDataState)
@@ -122,17 +101,24 @@ const ChartPage = () => {
     return <div>Loading...</div>;
   }
 
-  const setLabelHandler = (time: Time, position: SeriesMarkerPosition, color: string, shape: SeriesMarkerShape, text: string) => {
-    setLabelData((prevData) => [
-      ...prevData,
-      {
-        time: time,
-        position: position,
-        color: color,
-        shape: shape,
-        text: text
+  const setLabelHandler = (time: Time, position?: SeriesMarkerPosition, color?: string, shape?: SeriesMarkerShape, text?: string) => {
+
+    setLabelData((prevData) => {
+      if (position === undefined) {
+        return prevData.filter((item) => item.time != time);
       }
-    ])
+      const newData = [
+        ...prevData,
+        {
+          time: time,
+          position: position!,
+          color: color!,
+          shape: shape!,
+          text: text!
+        }
+      ];
+      return newData.sort((a, b) => Number(a.time) - Number(b.time));
+    });
   }
 
   return (
@@ -170,32 +156,6 @@ const ChartPage = () => {
                       setData(prevData => ({ ...prevData, data1: newData }))
                     })
                 }
-
-                // if (Number(bookMarks[0].time) <= time) {
-                //   console.log("test")
-                //   console.log("timeLoad: " + time.toString())
-                //   fetchMoreData(
-                //     '5m',
-                //     selectPair,
-                //     time.toString(),
-                //     barNum.toString()
-                //   )
-                //     .then(newData => {
-                //       console.log('5 chart loading')
-                //       setData(prevData => ({ ...prevData, data1: newData }))
-                //     })
-                // } else {
-                //   fetchMoreData(
-                //     '5m',
-                //     selectPair,
-                //     bookMarks[0].time.toString(),
-                //     barNum.toString()
-                //   )
-                //     .then(newData => {
-                //       console.log('5 chart loading')
-                //       setData(prevData => ({ ...prevData, data1: newData }))
-                //     })
-                // }
               }
             }
             />
@@ -298,7 +258,7 @@ const ChartPage = () => {
               }}
             ></Button>
           </div>
-          {/* <div className='m-2'>
+          <div className='m-2'>
             <h2>bookmark select</h2>
             <Dropdown
               options={
@@ -306,18 +266,18 @@ const ChartPage = () => {
                   (value) => {
                     return {
                       key: value.time.toLocaleString(),
-                      value: value.id.toString()
+                      value: value.time.toString()
                     }
                   }
                 )
               }
-              value={selectBookmark?.id.toString() || "-1"}
+              value={selectBookmark?.time.toString() || "-1"}
               onSelect={(e: any) => {
                 console.log(e.target.value)
                 //localStorage.setItem("chart_id", e.target.value)
-                setSelectBookmark(bookMarks.filter((value) => e.target.value === value.id.toString())[0])
+                setSelectBookmark(bookMarks.filter((value) => e.target.value === value.time.toString())[0])
               }}></Dropdown>
-          </div> */}
+          </div>
 
           <div className='m-2'>
             <h2>label select</h2>
@@ -333,38 +293,11 @@ const ChartPage = () => {
           </div>
           <div className='m-2'>
             <Button text='labelを再配置' onClick={() => {
-              // fetchAllData(selectedLabel, Number(selectBookmark?.time))
-
+              window.location.reload()
             }}></Button>
           </div>
 
-          {/* <div className='m-2'>
-            <h1>from</h1>
-            <h2>time</h2>
-            {labelingPost.from.toString()}
 
-            <h1>to</h1>
-            <h2>time</h2>
-            {labelingPost.to.toString()}
-            <h2>label</h2>
-            {labelingPost.label}
-            <br></br>
-          </div> */}
-          {/* <Button text={lock.from ? 'アンロックfrom' : 'ロックfrom'} onClick={() => {
-            setLock({ ...lock, from: !lock.from })
-          }}></Button>
-          <Button text={lock.to ? 'アンロックto' : 'ロックto'} onClick={() => {
-            setLock({ ...lock, to: !lock.to })
-          }}></Button> */}
-          {/* <div className='m-2'>
-            <Dropdown
-              options={
-                [{ key: "買い", value: "1" }, { key: "売り", value: "2" }, { key: "利確", value: "3" }]
-              } value={labelingPost.label.toString()}
-              onSelect={(e: any) => {
-                setLabelingPost({ ...labelingPost, label: e.target.value })
-              }}></Dropdown>
-          </div> */}
           <div className='m-2'>
             <Button text='買い' onClick={() => {
               console.log(labelData)
@@ -381,54 +314,31 @@ const ChartPage = () => {
               setLabelHandler(chartClickDataState.time, "belowBar", '#f68410', 'circle', `profit ${chartClickDataState.time}`)
             }}></Button>
           </div>
+          <div className='m-2'>
+            <Button text='取り消し' onClick={() => {
+              setLabelHandler(chartClickDataState.time)
+            }}></Button>
+          </div>
 
 
 
           <Button text='登録' onClick={() => {
             labelingFetch(labelData, selectedLabel!)
-            // if (selectedLabel !== undefined) {
-            //   const res = []
-            //   for (let i = 0; i < data.data1.length; i++) {
-            //     if (data.data1[i].time > labelingPost.to) {
-            //       break;
-            //     }
-            //     if (data.data1[i].time >= labelingPost.from && data.data1[i].time <= labelingPost.to) {
-            //       if (labelingPost.label.toString() === "1") {
-            //         res.push({
-            //           time: data.data1[i].time,
-            //           position: "belowBar",
-            //           color: '#2196F3',
-            //           shape: 'arrowUp',
-            //           text: `buy ${data.data1[i].time}`
-            //         })
-            //       }
-            //       if (labelingPost.label.toString() === "2") {
-            //         res.push({
-            //           time: data.data1[i].time,
-            //           position: "aboveBar",
-            //           color: '#e91e63',
-            //           shape: 'arrowDown',
-            //           text: `sell ${data.data1[i].time}`
-            //         })
-            //       }
-            //       if (labelingPost.label.toString() === "3") {
-            //         res.push({
-            //           time: data.data1[i].time,
-            //           position: "belowBar",
-            //           color: '#f68410',
-            //           shape: 'circle',
-            //           text: ` ${data.data1[i].time}`
-            //         })
-            //       }
-
-            //     }
-            //   }
-            //   labelingFetch(res, Number(selectedLabel))
-            // }
-
           }}></Button>
           <CreateLabeling></CreateLabeling>
-          {/* <CreateChartLabeling></CreateChartLabeling> */}
+
+          <h3>{fromTo.from.toString()}</h3>
+          <h3>{fromTo.to.toString()}</h3>
+          <Button text='from' onClick={()=>{
+            setFromTo({...fromTo!, from: chartClickDataState!.time})
+          }}></Button>
+          <Button text='to' onClick={()=>{
+            setFromTo({...fromTo!, to: chartClickDataState!.time})
+          }}></Button>
+
+          <Button text='ファイルを作成' onClick={() => {
+            fileCreate(selectPair, fromTo!.from, fromTo!.to, selectedLabel!)
+          }}></Button>
         </div>
       </div>
     </div >
