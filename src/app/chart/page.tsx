@@ -297,7 +297,15 @@ const ChartPage = () => {
             }}></Button>
           </div>
 
-
+          <div className='m-2'>
+            <h4>{`買い: ${labelData.filter(value => value.shape==='arrowUp').length}`}</h4>
+          </div>
+          <div className='m-2'>
+            <h4>{`売り: ${labelData.filter(value => value.shape==='arrowDown').length}`}</h4>
+          </div>
+          <div className='m-2'>
+            <h4>{`利確: ${labelData.filter(value => value.shape==='circle').length}`}</h4>
+          </div>
           <div className='m-2'>
             <Button text='買い' onClick={() => {
               console.log(labelData)
