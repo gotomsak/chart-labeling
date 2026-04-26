@@ -5,6 +5,10 @@
 FX 専用の現スキーマを、FX + 株（および将来の他アセット）に対応させる。
 既存データは `assetType=FX` として保持し、後方互換を維持する。
 
+> **前提**: スキーマ拡張は [06-database-consolidation.md](./06-database-consolidation.md) の Postgres 統合と同時に実施する。
+> 本ドキュメントの内容は **06 の新スキーマに統合済み**であり、独立したマイグレーションは行わない。
+> アセット種別・市場・interval・自動ラベリング履歴などは Postgres 上の最終スキーマに反映される。
+
 ## 現状スキーマ（参考）
 
 ```prisma
@@ -161,10 +165,10 @@ const JP_STOCKS = [
 ];
 ```
 
-## MongoDB（candles コレクション）
+## チャートデータ（Candle テーブル）
 
-詳細は [02-data-collection.md](./02-data-collection.md#mongodb-コレクション設計) を参照。
-スキーマレスだが、SQLite 側 `ChartMaster.symbol` と `MongoDB.candles.symbol` を一致させる。
+旧設計の MongoDB コレクションは廃止。Postgres の `Candle` テーブルへ統合する。
+詳細は [06-database-consolidation.md](./06-database-consolidation.md#新スキーマprisma--postgres) を参照。
 
 ## ロールバック
 

@@ -5,51 +5,70 @@
 新機能（自動収集・自動ラベリング・マルチアセット対応）の実装に先立ち、
 ベースとなる依存関係を最新の安定版に揃え、長期メンテナンス性を確保する。
 
+## 主要方針
+
+- **Next.js を最新メジャー（15.x）に更新**し、React 19 へ同時移行
+- **mysql2 を削除**（実コードで未使用、型インポートの誤検出のみ）
+- **MongoDB を撤去**し PostgreSQL に統一（[06-database-consolidation.md](./06-database-consolidation.md) を参照）
+- **SQLite (Prisma) も Postgres に統合**（メタデータも Postgres）
+
 ## 現状バージョン
 
-| パッケージ | 現在 | 最新（2026-04 時点想定） | 備考 |
-|-----------|------|-------------------------|------|
-| next | 14.2.5 | 15.x | App Router の安定化、Turbopack 改善 |
-| react | 18.x | 19.x | use API、Actions、改善された Suspense |
-| react-dom | 18.x | 19.x | React 19 同時アップグレード必須 |
+| パッケージ | 現在 | 目標 | 備考 |
+|-----------|------|------|------|
+| next | 14.2.5 | **15.x（最新）** | **最優先**。App Router 安定化、Turbopack 改善 |
+| react | 18.x | 19.x | Next.js 15 と同時 |
+| react-dom | 18.x | 19.x | Next.js 15 と同時 |
 | @types/react | 18.x | 19.x | React 19 と同時 |
 | @types/react-dom | 18.x | 19.x | React 19 と同時 |
 | typescript | 5.x | 5.7+ | 最新の安定版 |
-| @prisma/client | 5.17.0 | 6.x | Prisma 6 へメジャーアップ |
-| prisma | 5.17.0 | 6.x | Prisma 6 へメジャーアップ |
-| @mui/material | 5.16.7 | 6.x or 7.x | MUI 6/7 でブレイキング変更あり |
-| @emotion/react | 11.13.0 | 11.x 最新 | MUI と整合性確保 |
+| eslint-config-next | 14.2.5 | 15.x | Next と揃える |
+| @prisma/client | 5.17.0 | 6.x | Prisma 6（Postgres 移行と同時） |
+| prisma | 5.17.0 | 6.x | 同上 |
+| @mui/material | 5.16.7 | 6.x | 慎重にメジャーアップ |
+| @emotion/react | 11.13.0 | 11.x 最新 | MUI と整合 |
 | @emotion/styled | 11.13.0 | 11.x 最新 | 同上 |
-| mongodb | 6.8.0 | 6.x 最新 | パッチアップデート |
 | lightweight-charts | 4.1.7 | 5.x | v5 で API 変更あり |
 | axios | 1.3.1 | 1.x 最新 | パッチ |
-| storybook | 8.2.9 | 8.x 最新 or 9.x | 慎重にメジャー判断 |
-| eslint | 8.x | 9.x | フラットコンフィグ移行が必要 |
-| eslint-config-next | 14.2.5 | next と揃える |  |
-| tailwindcss | 3.4.1 | 4.x | v4 で大幅な構成変更（要検討） |
+| storybook | 8.2.9 | 8.x 最新 | 慎重にメジャー判断 |
+| eslint | 8.x | 9.x | フラットコンフィグ移行 |
+| tailwindcss | 3.4.1 | 4.x | v4 で大幅変更（要検討） |
 
-※ 最新版はアップグレード作業時に `npm outdated` で正確な値を取得して反映する。
+※ 最新版はアップグレード作業時に `npm outdated` で正確な値を取得して反映。
 
-## 不要・要見直しパッケージ
+## 削除対象パッケージ
 
-- **lighthouse**: ランタイム依存に入っているが用途不明。devDependencies へ移動 or 削除を検討
-- **mysql2**: MongoDB / SQLite 構成のため未使用の可能性。削除候補
-- **webpack-cli**: Next.js が内部で webpack を抱えるため不要の可能性。削除候補
+| パッケージ | 削除理由 |
+|-----------|---------|
+| **mysql2** | 実コード未使用（route.ts の型インポートが誤検出されているのみ） |
+| **mongodb** | Postgres へ統合のため不要（[06](./06-database-consolidation.md)） |
+| **sqlite / sqlite3** | Postgres 統合のため不要 |
+| **lighthouse** | 用途不明・ランタイム依存。要削除 |
+| **webpack-cli** | Next.js が内部で webpack を抱えるため不要 |
+
+## 追加予定パッケージ
+
+| パッケージ | 用途 |
+|-----------|------|
+| **pg** | PostgreSQL クライアント（Prisma 経由なら不要、直接利用なら追加） |
+| **yahoo-finance2** | データ自動収集（[02](./02-data-collection.md)） |
 
 ## アップグレード方針（段階的）
 
-リスク軽減のため **3 フェーズ** に分けて実施。各フェーズ後に `dev` 起動・主要画面動作確認・型チェック・ビルドを通す。
+リスク軽減のため **5 フェーズ** に分けて実施。各フェーズ後に `dev` 起動・主要画面動作確認・型チェック・ビルドを通す。
 
-### Phase A: 低リスクの追従（パッチ / マイナー）
+### Phase A: クリーンアップ（最初に実施・低リスク）
 
-対象：以下のパッチ・マイナーアップ
-- TypeScript 最新
-- @prisma/* マイナー / パッチ
-- mongodb パッチ
-- axios パッチ
-- @emotion/* パッチ
-- storybook 8.x 系の最新
-- @types/* 各種
+不要パッケージの削除と誤インポートの修正。
+
+```bash
+npm uninstall mysql2 lighthouse webpack-cli
+```
+
+- `src/app/api/candles/labeling/route.ts` の `mysql2` からの型インポートを修正
+  （`import { Next } from "node_modules/mysql2/typings/..."` を削除）
+
+### Phase B: パッチ / マイナー追従（低リスク）
 
 ```bash
 npx npm-check-updates -u --target minor
@@ -57,43 +76,51 @@ npm install
 npm run lint && npm run build
 ```
 
-### Phase B: 構成系の整理
+対象：TypeScript、Prisma 5.x 系最新、@emotion/*、axios、@types/*、storybook 8.x 最新
 
-- 不要パッケージ削除（`lighthouse`, `mysql2`, `webpack-cli` の用途確認後）
-- ESLint 設定の見直し（必要なら 9 系の flat config 化）
-- `package.json` の scripts 整備（`typecheck` 追加など）
+### Phase C: Next.js 15 + React 19（**最優先メジャー**）
 
-### Phase C: メジャーアップ（要計画）
+公式 codemod を活用：
 
-ブレイキング変更を伴うため、個別に PR を切って実施。
+```bash
+npx @next/codemod@canary upgrade latest
+npm install
+```
 
-#### C-1: Next.js 15 + React 19
+- `headers()` / `cookies()` 等の非同期化対応
+- React 19 の型変更（`ReactNode` 周り）
+- `eslint-config-next` も同時に 15.x へ
+- 主要画面（`/chart`）で全機能の手動動作確認
 
-- App Router 利用済みなので追従コストは中程度
-- 影響：`headers()`/`cookies()` が非同期化、Server Component の振る舞い変更
-- 公式 codemod: `npx @next/codemod@canary upgrade latest`
+### Phase D: DB 統合（Postgres へ移行）
 
-#### C-2: Prisma 6
+詳細は [06-database-consolidation.md](./06-database-consolidation.md) を参照。
 
-- スキーマ・マイグレーションファイルへの影響を確認
-- `04` 仕様（マルチアセット対応）のマイグレーションと統合実施が望ましい
+1. `docker-compose.yml` に Postgres サービスを追加
+2. `prisma/schema.prisma` の provider を `postgresql` に変更
+3. MongoDB 利用箇所を Prisma 経由の Postgres アクセスへ書き換え
+4. データ移行スクリプト実行
+5. MongoDB / SQLite 関連ファイル・依存削除
+6. `prisma`, `@prisma/client` を 6.x へ
 
-#### C-3: MUI 6/7
+### Phase E: 残りのメジャーアップ（並走可）
 
-- Pigment CSS / 新 styling API の検討
-- 既存の `sx` プロップ利用箇所が多いと移行コストが高い
-- 影響範囲が大きい場合は **見送り** も判断
+#### E-1: MUI 6
 
-#### C-4: Lightweight Charts 5
+- `sx` プロップ多用箇所の影響を確認
+- 影響大の場合は見送り判断
 
-- v5 で API 名称・型シグネチャ変更
-- ラベリング UI の中核なので慎重に検証
-- ロールバック容易性のため単独 PR
+#### E-2: Lightweight Charts 5
 
-#### C-5: Tailwind 4（任意）
+- ラベリング UI 中核のため単独 PR で慎重に検証
 
-- 設定ファイル形式が大きく変わるため、無理に上げない選択肢も可
-- v3 の保守リスクが顕在化したタイミングで実施
+#### E-3: ESLint 9 (flat config)
+
+- `.eslintrc.json` → `eslint.config.js` への移行
+
+#### E-4: Tailwind 4（任意）
+
+- v4 の構成変更を許容できるタイミングで実施
 
 ## 実施チェックリスト
 
@@ -115,8 +142,8 @@ npm run lint && npm run build
 
 ## 完了条件
 
-- Phase A / B 完了後、新機能（02 / 03 / 04 / 05）の実装開始可能
-- Phase C は新機能と並走して、影響範囲の小さいものから順次
+- Phase A〜D 完了後、新機能（02 / 03 / 04 / 05）の本格実装に入る
+- Phase E は新機能と並走、影響範囲の小さいものから順次
 
 ## 実装メモ
 
