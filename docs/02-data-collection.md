@@ -145,4 +145,40 @@ FX および日本株の OHLCV データを外部 API から自動取得し、**
 
 ## 実装メモ
 
-（実装後に追記）
+### 実装記録（完了）
+
+#### パッケージ
+- `yahoo-finance2` ^3.14.0 を追加
+
+#### ユーティリティ
+- `src/utils/yahooFinance.ts`：
+  - `new YahooFinance()` インスタンスで `chart()` API 呼び出し
+  - `interval=4h` は Yahoo が直接非対応のため、1h を取得して 4 本ずつ集約
+  - `null` を含むバーは除外
+- `src/utils/dataIngestion.ts`：
+  - `ingestSymbol(symbol, interval, from, to)` で取得 → `prisma.candle.upsert` で保存
+  - `(chartMasterId, interval, time)` ユニーク制約で冪等
+  - 戻り値：`{ inserted, updated, total }`
+
+#### API エンドポイント
+
+| ルート | 用途 |
+|------|------|
+| `POST /api/data/fetch` | 単一シンボル + interval を取得・保存 |
+| `POST /api/data/fetch/batch` | 全マスタ（or `assetType` フィルタ）を一括取得 |
+| `GET /api/data/status` | シンボル × interval ごとの件数・最終時刻 |
+| `GET /api/masters` | ChartMaster 一覧（`assetType` フィルタ可） |
+
+`/api/data/fetch/batch` のデフォルト interval：
+- FX: `["1h", "4h"]`
+- STOCK: `["1d", "1h"]`
+
+#### 検証結果
+- `npm run build`：`✓ Compiled successfully in 3.2s`、新ルート 4 本含めて Static 11/11 + Dynamic 9 ルート
+- `npm run lint`：エラー 0、警告 19（既存）
+
+#### 既知の制約・残件
+- Yahoo の 5m / 15m は履歴期間が短い（直近 60 日程度）。長期履歴が必要な場合は 1d 中心に運用
+- 大量銘柄の batch 取得時はレート制限の対策（指数バックオフ）を後追いで実装
+- スケジュール実行（Vercel Cron 等）は別タスク
+- UI からの取得トリガ・進捗表示は別タスク
