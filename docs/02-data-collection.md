@@ -2,7 +2,10 @@
 
 ## 目的
 
-FX および日本株の OHLCV データを外部 API から自動取得し、MongoDB に保存する。
+FX および日本株の OHLCV データを外部 API から自動取得し、**PostgreSQL の `Candle` テーブル**に保存する。
+
+> DB 構成は [06-database-consolidation.md](./06-database-consolidation.md) を参照。
+> Postgres 統合完了後にこの仕様の実装を開始する。
 
 ## データソース
 
@@ -59,7 +62,7 @@ FX および日本株の OHLCV データを外部 API から自動取得し、Mo
 
 ### `POST /api/data/fetch`
 
-外部 API からデータを取得して MongoDB へ保存。
+外部 API からデータを取得して Postgres の `Candle` テーブルへ upsert。
 
 **Request**
 
@@ -101,31 +104,29 @@ FX および日本株の OHLCV データを外部 API から自動取得し、Mo
 
 最終取得時刻・件数を確認。
 
-## MongoDB コレクション設計
+## Postgres テーブル設計
 
-### `candles`
+`Candle` テーブル（詳細は [06](./06-database-consolidation.md#新スキーマprisma--postgres) 参照）：
 
-```
-{
-  symbol: "7203.T",
-  assetType: "STOCK",
-  interval: "1d",
-  time: 1704067200,            // Unix timestamp (秒)
-  open: 2500.0,
-  high: 2530.0,
-  low: 2495.0,
-  close: 2520.0,
-  volume: 1234567,
-  source: "yahoo",
-  fetchedAt: 1717000000
-}
-```
+| カラム | 型 | 備考 |
+|--------|-----|------|
+| id | BigInt | PK |
+| chartMasterId | Int | `ChartMaster.id` への FK |
+| interval | String | "5m" / "1h" / "4h" / "1d" |
+| time | BigInt | Unix timestamp (秒) |
+| open / high / low / close | Float | OHLC |
+| volume | Float | 出来高 |
+| label | Int | デフォルト 0 |
+| source | String | "yahoo" 等 |
+| fetchedAt | DateTime | 取得時刻 |
 
-**インデックス**: `{ symbol: 1, interval: 1, time: 1 }` (unique)
+**ユニーク制約**: `(chartMasterId, interval, time)`
+**インデックス**: 同上で時系列クエリを高速化
 
 ## 重複・冪等性
 
-- 同一 `(symbol, interval, time)` は upsert
+- 同一 `(chartMasterId, interval, time)` は `prisma.candle.upsert()` で更新
+- 大量取得時は `createMany({ skipDuplicates: true })` でバッチ INSERT
 - 既存データを上書きしない設定もオプションで提供
 
 ## エラーハンドリング

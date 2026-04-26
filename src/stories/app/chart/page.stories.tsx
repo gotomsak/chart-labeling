@@ -1,9 +1,5 @@
-import  ChartPage from '../../../app/chart/page'; // ページコンポーネントのパスを指定
-import { Meta, StoryFn } from '@storybook/react';
-// props の型を定義する
-type ChartPageProps = {
-  someProp?: string;  // 例: ChartPage に渡す prop
-};
+import ChartPage from '../../../app/chart/page';
+import { Meta, StoryObj } from '@storybook/react';
 
 const meta = {
   title: 'ChartPage',
@@ -11,4 +7,8 @@ const meta = {
 } satisfies Meta<typeof ChartPage>;
 
 export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
 

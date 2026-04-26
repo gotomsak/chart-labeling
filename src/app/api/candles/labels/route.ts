@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server"
-import prisma from "@/utils/db";
+import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/utils/mongo";
 
 
-export const GET = async ({ params }: { params: { slug: string } }) => {
+export const GET = async (_req: NextRequest) => {
   // const result = await prisma?.chartLabeling.findMany()
   // const res = result?.map((value) => {
   //   return ({ key: value.name, value: value.id })
