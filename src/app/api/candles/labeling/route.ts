@@ -2,7 +2,6 @@ import { SeriesMarker, Time } from "lightweight-charts"
 import fs from 'fs';
 import prisma from "@/utils/db";
 import { NextRequest, NextResponse } from "next/server";
-import { Next } from "node_modules/mysql2/typings/mysql/lib/parsers/typeCast";
 import clientPromise from "@/utils/mongo";
 import { ObjectId } from "mongodb";
 

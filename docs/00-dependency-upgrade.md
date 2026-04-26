@@ -155,4 +155,33 @@ npm install
 
 ## 実装メモ
 
-（実装後に追記）
+### Phase A 実施記録（完了）
+
+#### 削除パッケージ
+- `mysql2` ^3.10.3 — 実コード未使用（型インポートの誤検出のみ）
+- `lighthouse` ^12.2.0 — 用途不明・ランタイム依存に不要
+- `webpack-cli` ^5.1.4 — Next.js が内部で webpack を抱えるため不要
+
+#### 誤インポート修正
+- `src/app/api/candles/labeling/route.ts`：
+  `import { Next } from "node_modules/mysql2/typings/..."` を削除（未使用かつ型解決不可）
+
+#### 既存バグ修正（クリーンアップ範囲）
+- `src/app/api/candles/labels/route.ts`：
+  GET ハンドラのシグネチャが App Router 仕様に違反していたため修正（`{ params }` → `NextRequest`）
+- `src/stories/Page.tsx`：
+  `react/no-unescaped-entities` エラー（`"` を `&quot;` に置換）
+- `src/stories/app/chart/page.stories.tsx`：
+  `storybook/story-exports` エラー（`Default` ストーリー追加）
+
+#### デッドコード削除
+- `src/components/LightweightChartGroupComponent.tsx`：
+  どこからも import されておらず、存在しない `./CandleChart` を参照していた
+- `src/components/Loader.tsx`：
+  どこからも import されておらず、`fetchMoreData` のシグネチャ変更に追従できておらず型エラー
+
+#### 検証結果
+- `npm install` 成功、lockfile から 3 パッケージが削除されたことを確認
+- `npm run build` で `✓ Compiled successfully`（Lint / 型チェック完全パス）
+- 最終段階の static page data collection は MongoDB 実体接続を要求するため build 完走には DB 起動が必要。
+  これは Phase D（Postgres 統合）で解消予定の構造的問題で、Phase A の範囲外。
