@@ -10,23 +10,27 @@
     "format": "biome format --write .",
     "check": "biome check --write .",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "db:migrate": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^5.18.0",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.0.0",
     "axios": "^1.15.2",
     "lightweight-charts": "^4.2.3",
-    "mongodb": "^6.21.0",
     "next": "16.2.4",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-window": "^1.8.11",
     "react-window-infinite-loader": "^1.0.10",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
@@ -47,9 +51,10 @@
     "@types/react-window": "^1.8.8",
     "@types/react-window-infinite-loader": "^1.0.9",
     "postcss": "^8",
-    "prisma": "^5.22.0",
+    "prisma": "^6.0.0",
     "storybook": "^8.6.18",
     "tailwindcss": "^3.4.19",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   },
   "overrides": {
