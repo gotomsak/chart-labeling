@@ -1,6 +1,5 @@
-import { BookmarkData } from '@/app/api/bookmark/route';
-import { Time, UTCTimestamp } from 'lightweight-charts';
-import React from 'react';
+import type React from "react";
+import type { BookmarkData } from "@/app/api/bookmark/route";
 
 interface Props {
   timestamp: BookmarkData;
@@ -8,7 +7,6 @@ interface Props {
 }
 
 const UTCTimestampItem: React.FC<Props> = ({ timestamp, onClick }) => {
-  
   const handleClick = () => {
     onClick(timestamp);
   };

@@ -1,6 +1,6 @@
-'use clinet'
-import { AppBar, Box, Button, Toolbar, Typography } from '@mui/material';
-import Link from 'next/link';
+"use client";
+import { AppBar, Box, Button, Toolbar, Typography } from "@mui/material";
+import Link from "next/link";
 
 export default function Navigation() {
   return (

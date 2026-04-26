@@ -1,5 +1,5 @@
-import axios from "axios"
+import axios from "axios";
 
 export const getLabels = async () => {
-  return await axios.get('/api/candles/labels')
-}
+  return await axios.get("/api/candles/labels");
+};

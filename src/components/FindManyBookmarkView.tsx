@@ -1,11 +1,10 @@
-'use client'
+"use client";
 
-import { BookmarkData } from "@/app/api/bookmark/route"
-import { UTCTimestamp } from "lightweight-charts"
-import UTCTimestampItem from "./UTCTimestampItem"
+import type { BookmarkData } from "@/app/api/bookmark/route";
+import UTCTimestampItem from "./UTCTimestampItem";
 
 interface props {
-  times: BookmarkData[]
+  times: BookmarkData[];
 }
 
 const FindManyBookmarkView = (props: props) => {
@@ -15,11 +14,7 @@ const FindManyBookmarkView = (props: props) => {
   return (
     <div className="utc-timestamp-list">
       {props.times.map((timestamp, index) => (
-        <UTCTimestampItem
-          key={index}
-          timestamp={timestamp}
-          onClick={handleTimestampClick}
-        />
+        <UTCTimestampItem key={index} timestamp={timestamp} onClick={handleTimestampClick} />
       ))}
       <style jsx>{`
         .utc-timestamp-list {
@@ -29,8 +24,7 @@ const FindManyBookmarkView = (props: props) => {
         }
       `}</style>
     </div>
-  )
+  );
+};
 
-}
-
-export default FindManyBookmarkView
+export default FindManyBookmarkView;
