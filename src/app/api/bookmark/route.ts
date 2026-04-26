@@ -1,30 +1,31 @@
 import type { Time } from "lightweight-charts";
-import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import prisma from "@/utils/db";
-import clientPromise from "@/utils/mongo";
 
 export interface BookmarkRequestBody {
   time: Time;
   chartLabelingId: number;
 }
+
 export const POST = async (req: Request) => {
   const body: BookmarkRequestBody = await req.json();
   try {
     const created = await prisma.bookmark.create({
       data: {
-        time: String(body.time),
-        chartLabelingId: body.chartLabelingId,
+        time: BigInt(body.time as unknown as number),
+        labelingId: Number(body.chartLabelingId),
       },
     });
-    return NextResponse.json({ message: `${created?.time}でbookmarkしました` }, { status: 200 });
+    return NextResponse.json(
+      { message: `${created.time}でbookmarkしました` },
+      { status: 200 },
+    );
   } catch (error) {
-    return NextResponse.json({ error: error }, { status: 500 });
+    return NextResponse.json({ error: `${error}` }, { status: 500 });
   }
 };
 
 export interface BookmarkData {
-  //id: number
   name: string;
   time: Time;
   index: number;
@@ -33,17 +34,30 @@ export interface BookmarkData {
 export const GET = async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const labelingId = searchParams.get("id");
-  console.log(labelingId);
-  const client = await clientPromise;
-  const db = client.db("FXCharts");
-  try {
-    const find = await db.collection("labelings").findOne({ _id: new ObjectId(labelingId!) });
 
-    if (!find) {
-      return NextResponse.json({ error: "Labeling not found" }, { status: 404 });
+  if (!labelingId) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+
+  try {
+    const bookmarks = await prisma.bookmark.findMany({
+      where: { labelingId: Number(labelingId) },
+      orderBy: { time: "asc" },
+    });
+
+    if (bookmarks.length === 0) {
+      return NextResponse.json([], { status: 200 });
     }
-    return NextResponse.json(find!.bookmarks, { status: 200 });
+
+    return NextResponse.json(
+      bookmarks.map((b) => ({
+        name: b.name,
+        time: Number(b.time),
+        index: b.bookmarkIndex,
+      })),
+      { status: 200 },
+    );
   } catch (error) {
-    return NextResponse.json({ error: error }, { status: 500 });
+    return NextResponse.json({ error: `${error}` }, { status: 500 });
   }
 };

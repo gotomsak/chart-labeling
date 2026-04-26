@@ -1,40 +1,92 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Bookmark {
-  id              Int           @id @default(autoincrement())
-  time            String
-  date            DateTime      @default(now())
-  chartLabelingId Int
-  chartLabeling   ChartLabeling @relation(fields: [chartLabelingId], references: [id])
-}
-
 model ChartMaster {
-  id            Int             @id @default(autoincrement())
-  pair          String          @unique
-  chartLabeling ChartLabeling[]
+  id          Int        @id @default(autoincrement())
+  symbol      String     @unique
+  displayName String
+  assetType   String
+  market      String
+  enabled     Boolean    @default(true)
+  candles     Candle[]
+  labelings   Labeling[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("chart_masters")
 }
 
-model ChartLabeling {
-  id            Int         @id @default(autoincrement())
-  fileName      String      @unique
-  name          String
+model Candle {
+  id            BigInt      @id @default(autoincrement())
   chartMasterId Int
   chartMaster   ChartMaster @relation(fields: [chartMasterId], references: [id])
-  bookmark      Bookmark[]
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
-  deleted_at    DateTime?
+  interval      String
+  time          BigInt
+  open          Float
+  high          Float
+  low           Float
+  close         Float
+  volume        Float       @default(0)
+  label         Int         @default(0)
+  source        String      @default("yahoo")
+  fetchedAt     DateTime    @default(now())
+
+  @@unique([chartMasterId, interval, time])
+  @@index([chartMasterId, interval, time])
+  @@map("candles")
+}
+
+model Labeling {
+  id            Int            @id @default(autoincrement())
+  chartMasterId Int
+  chartMaster   ChartMaster    @relation(fields: [chartMasterId], references: [id])
+  fileName      String         @unique
+  name          String
+  interval      String         @default("5m")
+  source        String         @default("manual")
+  markers       Json           @default("[]")
+  bookmarks     Bookmark[]
+  autoLabelRuns AutoLabelRun[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+
+  @@map("labelings")
+}
+
+model Bookmark {
+  id            Int      @id @default(autoincrement())
+  labelingId    Int
+  labeling      Labeling @relation(fields: [labelingId], references: [id])
+  name          String   @default("")
+  time          BigInt
+  bookmarkIndex Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  @@index([labelingId, time])
+  @@map("bookmarks")
+}
+
+model AutoLabelRun {
+  id              Int      @id @default(autoincrement())
+  labelingId      Int
+  labeling        Labeling @relation(fields: [labelingId], references: [id])
+  strategy        String
+  config          Json
+  buyCount        Int
+  sellCount       Int
+  takeProfitCount Int
+  noneCount       Int
+  executedAt      DateTime @default(now())
+
+  @@map("auto_label_runs")
 }

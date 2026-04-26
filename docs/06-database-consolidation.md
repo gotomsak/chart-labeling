@@ -227,4 +227,65 @@ npm uninstall mongodb mysql2 sqlite sqlite3
 
 ## 実装メモ
 
-（実装後に追記）
+### Phase D 実施記録（完了）
+
+#### スキーマ
+- `prisma/schema.prisma` の provider を `postgresql` に変更
+- 新スキーマ：`ChartMaster` / `Candle` / `Labeling` / `Bookmark` / `AutoLabelRun`
+- テーブル名は `@@map` で snake_case に統一（`chart_masters`, `candles`, `labelings`, `bookmarks`, `auto_label_runs`）
+- 旧 SQLite マイグレーション（3 件）は削除し、初期マイグレーション `20260426200000_init_postgres/migration.sql` を `prisma migrate diff` で生成
+- `prisma/migrations/migration_lock.toml` の provider を `postgresql` に更新
+
+#### Prisma 6 へアップグレード
+- `prisma` / `@prisma/client`: 5.22 → **6.19.3**
+- `tsx` を devDependencies に追加（seed 実行用）
+- npm scripts 追加：
+  - `db:migrate` (`prisma migrate deploy`)
+  - `db:generate` (`prisma generate`)
+  - `db:seed` (`tsx prisma/seed.ts`)
+  - `db:studio` (`prisma studio`)
+- `package.json` の `prisma.seed` で seed コマンドを宣言
+
+#### docker-compose.yml
+- MongoDB サービス削除、Postgres 16-alpine サービス追加
+- 環境変数：`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT`
+- ボリューム：`postgres_data`
+
+#### 環境変数
+- `.env.example` を新規追加（`DATABASE_URL` と Postgres 各種）
+
+#### API 書き換え
+| ファイル | 主要変更 |
+|---------|---------|
+| `src/app/api/candles/route.ts` | MongoDB collection → `prisma.candle.findMany`、`pair`/`time_frame` → `symbol`/`interval` も受付（後方互換） |
+| `src/app/api/candles/labeling/route.ts` | `ObjectId` → 整数 ID、ラベルは `Labeling.markers` JSONB に保存 |
+| `src/app/api/candles/labeling/create/route.ts` | `chartMaster.upsert` + `labeling.create` + 先頭ブックマーク作成 |
+| `src/app/api/candles/labels/route.ts` | `prisma.labeling.findMany`（deletedAt 除外、createdAt desc） |
+| `src/app/api/bookmark/route.ts` | `prisma.bookmark` ベース、`time` を BigInt に統一 |
+| `src/app/api/file/route.ts` | `prisma.candle.findMany` + `Labeling.markers` から JSON エクスポート |
+
+#### フロントエンド更新
+- `src/components/CreateLabeling.tsx`：`res.data.insertedId` → `String(res.data.id)`
+- API レスポンス上、`pair` 表記は外部互換のため受付続行（内部では `symbol` として扱う）
+
+#### 削除
+- `src/utils/mongo.ts`
+- `src/global.d.ts`（MongoClient 型のみだったため）
+- `mongodb` / `sqlite` / `sqlite3` パッケージ
+- 旧 SQLite マイグレーションファイル
+
+#### Seed
+- `prisma/seed.ts` を新規追加：FX 5 ペア + 日本株 7 銘柄を `ChartMaster` に upsert
+- Phase 02（自動データ収集）で OHLCV を投入する前提
+
+#### 検証結果
+- `npm install` 成功
+- `npm run lint`：エラー 0、警告 19（既存品質）
+- `npm run build`：`✓ Compiled successfully in 4.3s`、TypeScript pass、Static **11/11 完走**
+- MongoDB 接続要求が完全に消えたため prerender エラーが解消
+
+#### 既知の制約・残件
+- 既存 MongoDB / SQLite データの実機マイグレーションは未実施（環境にデータがないため）
+  - 必要時は別タスクで `scripts/migrate-to-postgres.ts` を作成
+- Postgres を実際に起動して `prisma migrate deploy` を流す動作確認は CI / 開発環境側で実施
+- フロントエンド側の `chartLabelingId` フィールド名は API 互換のため温存（バックエンド内部で `labelingId` に変換）

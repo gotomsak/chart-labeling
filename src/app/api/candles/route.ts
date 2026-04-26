@@ -1,10 +1,6 @@
-import fs, { createReadStream } from "node:fs";
-import path from "node:path";
-import readline from "node:readline";
 import type { Time } from "lightweight-charts";
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "@/utils/db";
-import clientPromise from "@/utils/mongo";
 
 export interface GetResponse {
   data: {
@@ -21,103 +17,39 @@ export interface CandleType {
   close: number;
 }
 
-const _createReadLine = (dataFile: string, start: number, barNum: number): Promise<Response> => {
-  const result: CandleType[] = [];
-  let index = 0;
-
-  return new Promise((resolve, reject) => {
-    if (!fs.existsSync(dataFile)) {
-      reject(NextResponse.json({ error: "Invalid time frame" }, { status: 400 }));
-    }
-    console.log("Starting stream from file:", dataFile);
-
-    const fileStream = createReadStream(dataFile);
-
-    const rl = readline.createInterface({
-      input: fileStream,
-      crlfDelay: Infinity,
-    });
-
-    rl.on("line", (line) => {
-      try {
-        const jsonObject = JSON.parse(line);
-        if (jsonObject.time >= start) {
-          index++;
-          result.push(jsonObject);
-        }
-        // if (index >= start && index < end) {
-        //   //const jsonObject = JSON.parse(line);
-        //   // console.log(jsonObject)
-
-        // }
-
-        if (index >= barNum) {
-          rl.close();
-          fileStream.destroy();
-          // console.log(result)
-          resolve(NextResponse.json(result, { status: 200 }));
-        }
-      } catch (error) {
-        console.error("Error processing data chunk:", error);
-        reject(new Error("Error processing data chunk"));
-      }
-    });
-
-    rl.on("close", () => {
-      if (index < barNum) {
-        resolve(NextResponse.json(result, { status: 200 }));
-      }
-    });
-
-    fileStream.on("error", (_err) => {
-      reject(new Error("File stream error"));
-    });
-  });
-};
-
-async function _copyFile(source: any, destination: any) {
-  try {
-    await fs.promises.copyFile(source, destination);
-    console.log(`File copied from ${source} to ${destination}`);
-  } catch (error: any) {
-    throw new Error(`Failed to copy file: ${error.message}`);
-  }
-}
-
-async function createFile(destination: string, content: string) {
-  try {
-    await fs.promises.writeFile(destination, content, "utf-8");
-    console.log(`File created at ${destination} with the provided content.`);
-  } catch (error: any) {
-    throw new Error(`Failed to create file: ${error.message}`);
-  }
-}
+const serializeCandle = <T extends { time: bigint; id?: bigint }>(c: T) => ({
+  ...c,
+  time: Number(c.time),
+  id: c.id ? Number(c.id) : undefined,
+});
 
 export const GET = async (req: NextRequest) => {
-  const pair = req.nextUrl.searchParams.get("pair");
-  const time_frame = req.nextUrl.searchParams.get("time_frame");
-
-  //const skip = parseInt(req.nextUrl.searchParams.get('skip') || '0', 10);
-  const _time = parseInt(req.nextUrl.searchParams.get("time") || "0", 10);
+  const symbol = req.nextUrl.searchParams.get("pair") ?? req.nextUrl.searchParams.get("symbol");
+  const interval =
+    req.nextUrl.searchParams.get("time_frame") ?? req.nextUrl.searchParams.get("interval");
   const index = parseInt(req.nextUrl.searchParams.get("index") || "0", 10);
-
   const limit = parseInt(req.nextUrl.searchParams.get("limit") || "10", 10);
+
+  if (!symbol || !interval) {
+    return NextResponse.json({ error: "symbol and interval are required" }, { status: 400 });
+  }
+
   try {
-    const client = await clientPromise;
-    const db = client.db("FXCharts");
+    const master = await prisma.chartMaster.findUnique({ where: { symbol } });
+    if (!master) {
+      return NextResponse.json([]);
+    }
 
-    const collection = db.collection(`${pair}_${time_frame}`);
+    const candles = await prisma.candle.findMany({
+      where: { chartMasterId: master.id, interval },
+      orderBy: { time: "asc" },
+      skip: index,
+      take: limit,
+    });
 
-    const documents = await collection.find().skip(index).limit(limit).toArray();
-
-    // const documents = await collection
-    //   .find({ time: { $gte: time } }) // Filter by time
-    //   .sort({ time: 1 }) // Sort by time in ascending order
-    //   .limit(limit)
-    //   .toArray();
-
-    return NextResponse.json(documents);
-  } catch (_error) {
+    return NextResponse.json(candles.map(serializeCandle));
+  } catch (error) {
+    console.error("Failed to fetch candles:", error);
     return NextResponse.json({ error: "Failed to fetch documents" }, { status: 500 });
   }
 };
@@ -126,59 +58,58 @@ export interface CreateChartLabelingRequestBody {
   pair: string;
   name: string;
 }
+
 export const POST = async (req: Request) => {
   const body: CreateChartLabelingRequestBody = await req.json();
   try {
-    const result = await prisma.$transaction(async (prisma) => {
-      const chartMaster = await prisma.chartMaster.upsert({
-        where: { pair: body.pair },
+    const result = await prisma.$transaction(async (tx) => {
+      const chartMaster = await tx.chartMaster.upsert({
+        where: { symbol: body.pair },
         update: {},
         create: {
-          pair: body.pair,
+          symbol: body.pair,
+          displayName: body.pair,
+          assetType: "FX",
+          market: "FX",
         },
       });
+
       const createdAt = new Date();
       const fileName = `${createdAt.toISOString()}_${body.pair}_${body.name}.json`;
-      const destinationFilePath = path.join("src/data/labeling/", fileName);
-      await createFile(destinationFilePath, "");
-      //await copyFile(`src/data/master/${body.pair}.5.json`, destinationFilePath);
 
-      const chartLabeling = await prisma.chartLabeling.create({
+      const labeling = await tx.labeling.create({
         data: {
-          fileName: fileName,
+          fileName,
           name: body.name,
           chartMasterId: chartMaster.id,
-          created_at: createdAt,
+          interval: "5m",
+          source: "manual",
+          createdAt,
         },
       });
 
-      const fileStream = fs.createReadStream(path.join(`src/data/master/${body.pair}.5.json`));
-      const rl = readline.createInterface({
-        input: fileStream,
-        crlfDelay: Infinity,
+      const firstCandle = await tx.candle.findFirst({
+        where: { chartMasterId: chartMaster.id, interval: "5m" },
+        orderBy: { time: "asc" },
       });
 
-      let datetimeValue = null;
-      for await (const line of rl) {
-        const jsonObject = JSON.parse(line);
-        datetimeValue = jsonObject.datetime;
-        break; // Exit after reading the first line
+      if (firstCandle) {
+        await tx.bookmark.create({
+          data: {
+            name: "先頭",
+            time: firstCandle.time,
+            bookmarkIndex: 0,
+            labelingId: labeling.id,
+          },
+        });
       }
 
-      await prisma.bookmark.create({
-        data: {
-          time: datetimeValue.toString(),
-          chartLabelingId: chartLabeling.id,
-        },
-      });
-      return chartLabeling;
+      return labeling;
     });
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: `Failed to insert data: ${error}` }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 };
