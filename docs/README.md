@@ -18,7 +18,7 @@
 
 1. **00 Phase A** 不要パッケージ削除（mysql2, lighthouse, webpack-cli）
 2. **00 Phase B** パッチ・マイナー追従
-3. **00 Phase C** Next.js 15 + React 19 へメジャーアップ
+3. **00 Phase C** Next.js 16.2 + React 19.2 へメジャーアップ（Turbopack デフォルト / React Compiler）
 4. **00 Phase D / 06** PostgreSQL へ DB 統合（+ スキーマ拡張 05 を同時実施）
 5. **02** データ自動収集（Yahoo Finance）
 6. **04** マルチアセット UI 対応

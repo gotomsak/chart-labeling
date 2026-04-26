@@ -7,7 +7,7 @@
 
 ## 主要方針
 
-- **Next.js を最新メジャー（15.x）に更新**し、React 19 へ同時移行
+- **Next.js を最新（16.2 / 2026-03）に更新**し、React 19.2 / React Compiler / Turbopack デフォルト構成へ移行
 - **mysql2 を削除**（実コードで未使用、型インポートの誤検出のみ）
 - **MongoDB を撤去**し PostgreSQL に統一（[06-database-consolidation.md](./06-database-consolidation.md) を参照）
 - **SQLite (Prisma) も Postgres に統合**（メタデータも Postgres）
@@ -16,13 +16,13 @@
 
 | パッケージ | 現在 | 目標 | 備考 |
 |-----------|------|------|------|
-| next | 14.2.5 | **15.x（最新）** | **最優先**。App Router 安定化、Turbopack 改善 |
-| react | 18.x | 19.x | Next.js 15 と同時 |
-| react-dom | 18.x | 19.x | Next.js 15 と同時 |
+| next | 14.2.5 | **16.2（最新）** | **最優先**。Turbopack デフォルト、React Compiler 安定、ルーティング刷新 |
+| react | 18.x | 19.2 | Next.js 16 同梱の最新版 |
+| react-dom | 18.x | 19.2 | Next.js 16 と同時 |
 | @types/react | 18.x | 19.x | React 19 と同時 |
 | @types/react-dom | 18.x | 19.x | React 19 と同時 |
 | typescript | 5.x | 5.7+ | 最新の安定版 |
-| eslint-config-next | 14.2.5 | 15.x | Next と揃える |
+| eslint-config-next | 14.2.5 | 16.x | Next と揃える |
 | @prisma/client | 5.17.0 | 6.x | Prisma 6（Postgres 移行と同時） |
 | prisma | 5.17.0 | 6.x | 同上 |
 | @mui/material | 5.16.7 | 6.x | 慎重にメジャーアップ |
@@ -78,19 +78,27 @@ npm run lint && npm run build
 
 対象：TypeScript、Prisma 5.x 系最新、@emotion/*、axios、@types/*、storybook 8.x 最新
 
-### Phase C: Next.js 15 + React 19（**最優先メジャー**）
+### Phase C: Next.js 16 + React 19.2（**最優先メジャー**）
 
-公式 codemod を活用：
+公式 codemod を活用して 14 → 15 → 16 を順に通す：
 
 ```bash
 npx @next/codemod@canary upgrade latest
 npm install
 ```
 
-- `headers()` / `cookies()` 等の非同期化対応
-- React 19 の型変更（`ReactNode` 周り）
-- `eslint-config-next` も同時に 15.x へ
+#### 主な対応事項
+- `headers()` / `cookies()` / `params` / `searchParams` の **非同期化**（Next.js 15 で導入、16 で必須）
+- **Turbopack がデフォルト** になる（`next dev` / `next build` 共に）。既存の webpack カスタム設定があれば Turbopack 設定へ移行
+- **React Compiler** の有効化を検討（手動 `useMemo` / `useCallback` の削減）
+- React 19.2 の型変更（`ReactNode` から子要素の型推論など）
+- ルーティング・ナビゲーション API の刷新に追従
+- `eslint-config-next` も同時に 16.x へ
 - 主要画面（`/chart`）で全機能の手動動作確認
+
+#### 注意
+- Storybook 8.x が Next.js 16 と Turbopack 構成に追従しているか要確認。未対応なら Storybook も同時に最新化
+- 一気に飛ばさず、まず 15 系で動作確認 → 16 系へ進める二段階方式が安全
 
 ### Phase D: DB 統合（Postgres へ移行）
 
