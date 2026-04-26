@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/utils/mongo";
-
 
 export const GET = async (_req: NextRequest) => {
   // const result = await prisma?.chartLabeling.findMany()
@@ -8,13 +7,13 @@ export const GET = async (_req: NextRequest) => {
   //   return ({ key: value.name, value: value.id })
   // })
   const client = await clientPromise;
-  const db = client.db('FXCharts');
-  const collection = db.collection("labelings")
+  const db = client.db("FXCharts");
+  const collection = db.collection("labelings");
   const documents = await collection.find({}).toArray();
-  const res = documents.map((doc:any)=>({
+  const res = documents.map((doc: any) => ({
     key: doc.name,
-    value: doc._id.toString()
-  }))
+    value: doc._id.toString(),
+  }));
 
-  return NextResponse.json(res, { status: 200 })
-}
+  return NextResponse.json(res, { status: 200 });
+};

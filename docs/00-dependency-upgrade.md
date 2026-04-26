@@ -221,3 +221,51 @@ npm install
 - `npm install` 成功
 - `npm run lint`：エラー 0、既存警告のみ（Phase A 時点と同じ）
 - `npm run build`：`✓ Compiled successfully`（型チェック・Lint 完全パス）
+
+### Phase C 実施記録（完了）
+
+#### Next.js 16 + React 19.2 アップグレード
+- `next`: 14.2.35 → **16.2.4**
+- `react`: 18.3.1 → **19.2.5**
+- `react-dom`: 18.3.1 → **19.2.5**
+- `@types/react`: → **19.2.14**
+- `@types/react-dom`: → **19.2.3**
+- `@next/codemod` で `next-async-request-api` を実行 → 該当箇所なし（route handler は `req.nextUrl.searchParams` を使用済み）
+- Turbopack がデフォルトで動作（`✓ Compiled successfully in 4.2s`）
+- `package.json` に `overrides` 追加：React 19 型の重複解消、`@storybook/nextjs` の next peer dep を override
+
+#### ESLint → Biome 移行
+- 削除：`eslint`, `eslint-config-next`, `eslint-plugin-storybook`, `.eslintrc.json`
+- 追加：`@biomejs/biome` 2.4.13
+- `biome.json` を作成（space + 2 indent, lineWidth 100, recommended rules + 一部緩和）
+- `package.json` scripts 変更：
+  - `"lint": "biome lint ."`
+  - `"format": "biome format --write ."`
+  - `"check": "biome check --write ."`
+- `biome check --write` / `--unsafe` で 43 ファイル自動整形（コード差分は formatter とインポート整理のみ、ロジック変更なし）
+
+#### 既存バグ修正
+- `src/components/Navigation.tsx`：`'use clinet'` のタイポを `'use client'` に修正
+  （これにより `_not-found` の prerender エラー「Functions cannot be passed directly to Client Components」が解消）
+
+#### Biome ルール緩和（既存コード品質を warn 化）
+Phase C の範囲外として、既存コードの a11y / 未使用変数 / hooks deps などを `warn` に降格：
+- `correctness/noUnusedVariables`, `correctness/useExhaustiveDependencies`
+- `a11y/useButtonType`, `a11y/noSvgWithoutTitle`, `a11y/noStaticElementInteractions`, `a11y/useKeyWithClickEvents`
+- `suspicious/noImplicitAnyLet`, `suspicious/noArrayIndexKey`, `suspicious/noRedeclare`
+
+→ Phase C 外の独立した品質改善 PR で順次 error 化していく方針。
+
+#### 検証結果
+- `npm install` 成功（overrides で peer dep 解決）
+- `npm run lint`（biome）：エラー 0、警告 20（既存コード）
+- `npm run build`：`✓ Compiled successfully in 4.2s`（Turbopack）、TypeScript pass、Static page 生成 11/11 完走
+
+#### Storybook について
+- Storybook 8.6.18 のまま据え置き（v9/10 は addon 構成が大幅変更のため Phase E）
+- `overrides` で `@storybook/nextjs` の next peer dep を緩和して共存
+
+#### 今後の課題（Phase C 残件・別タスク化）
+- Storybook 8 → 10 への移行（Phase E）
+- Biome `warn` ルールの段階的 error 化（既存コード品質改善 PR）
+- React 19 の `use` API / Server Actions などの活用検討（新機能実装で随時）

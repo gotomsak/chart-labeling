@@ -1,10 +1,7 @@
-import { useState } from 'react';
-
-
-interface props{
-  text: string
-  handleText: (e:any)=>void
-  handleButton: (e:any)=>void
+interface props {
+  text: string;
+  handleText: (e: any) => void;
+  handleButton: (e: any) => void;
 }
 const Form = (props: props) => {
   return (

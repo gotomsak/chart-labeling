@@ -20,9 +20,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <Navigation></Navigation>
-        <ChartClickDataProvider>
-          {children}
-        </ChartClickDataProvider>
+        <ChartClickDataProvider>{children}</ChartClickDataProvider>
       </body>
     </html>
   );

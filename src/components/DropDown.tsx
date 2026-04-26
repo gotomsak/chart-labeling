@@ -1,4 +1,4 @@
-import React, { ChangeEventHandler } from 'react';
+import type { ChangeEventHandler } from "react";
 
 export interface FromOption {
   key: string;
