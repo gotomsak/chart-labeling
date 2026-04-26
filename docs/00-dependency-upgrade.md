@@ -185,3 +185,39 @@ npm install
 - `npm run build` で `✓ Compiled successfully`（Lint / 型チェック完全パス）
 - 最終段階の static page data collection は MongoDB 実体接続を要求するため build 完走には DB 起動が必要。
   これは Phase D（Postgres 統合）で解消予定の構造的問題で、Phase A の範囲外。
+
+### Phase B 実施記録（完了）
+
+`npm-check-updates --target minor` で同一メジャー内の最新版に揃えた。
+
+#### 主な更新（minor / patch）
+- next: 14.2.5 → 14.2.35
+- eslint-config-next: 14.2.5 → 14.2.35
+- @prisma/client / prisma: 5.17.0 → 5.22.0
+- @mui/material: 5.16.7 → 5.18.0
+- @emotion/react: 11.13.0 → 11.14.0
+- @emotion/styled: 11.13.0 → 11.14.1
+- mongodb: 6.8.0 → 6.21.0
+- axios: 1.3.1 → 1.15.2
+- lightweight-charts: 4.1.7 → 4.2.3
+- @storybook/* / storybook: 8.2.9 → 8.6.18
+- @chromatic-com/storybook: 1.6.1 → 1.9.0
+- eslint-plugin-storybook: 0.8.0 → 0.12.0
+- tailwindcss: 3.4.1 → 3.4.19
+- react-window: 1.8.10 → 1.8.11
+- react-window-infinite-loader: 1.0.9 → 1.0.10
+
+#### 据え置き（メジャー対象、別 Phase）
+- next 14 → 16（Phase C）
+- react / react-dom 18 → 19（Phase C）
+- @prisma/client / prisma 5 → 7（Phase D）
+- @mui/material 5 → 9（Phase E）
+- lightweight-charts 4 → 5（Phase E）
+- eslint 8 → 10（Phase E）
+- tailwindcss 3 → 4（Phase E）
+- typescript 5 → 6（Phase E）
+
+#### 検証結果
+- `npm install` 成功
+- `npm run lint`：エラー 0、既存警告のみ（Phase A 時点と同じ）
+- `npm run build`：`✓ Compiled successfully`（型チェック・Lint 完全パス）
