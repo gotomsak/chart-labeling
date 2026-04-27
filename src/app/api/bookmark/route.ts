@@ -16,10 +16,7 @@ export const POST = async (req: Request) => {
         labelingId: Number(body.chartLabelingId),
       },
     });
-    return NextResponse.json(
-      { message: `${created.time}でbookmarkしました` },
-      { status: 200 },
-    );
+    return NextResponse.json({ message: `${created.time}でbookmarkしました` }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ error: `${error}` }, { status: 500 });
   }
