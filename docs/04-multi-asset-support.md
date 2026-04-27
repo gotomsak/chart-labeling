@@ -83,4 +83,47 @@ labelData_USDJPY_1h_2024.json
 
 ## 実装メモ
 
-（実装後に追記）
+### 実装記録（完了）
+
+#### 新規 Hook
+- `src/hooks/useMasters.ts`：
+  - `/api/masters` をクライアントから取得して `Master[]` を返却
+  - `INTERVALS_BY_ASSET` 定数（FX: `5m/1h/4h`、STOCK: `1h/1d`）
+
+#### 新規コンポーネント
+- `src/components/SymbolSelector.tsx`（MUI）：
+  - アセットタイプタブ（FX / 株）
+  - タブ切替時に同タイプの先頭銘柄に自動切替
+  - 銘柄ドロップダウン
+
+#### `/chart` ページ刷新
+- ハードコードの `selectPair = "GBPJPY"` を撤廃し、`SymbolSelector` で動的に切替
+- `assetType` / `symbol` を localStorage に永続化
+- チャート pane を **`intervals` 配列で動的に描画**
+  - FX 選択時: 3 pane（5m / 1h / 4h）
+  - 株選択時: 2 pane（1h / 1d）
+- データ未投入時は「データがありません（自動取得を実行してください）」を表示
+
+#### `CreateLabeling` 改修
+- 内部の通貨ペアセレクタを撤去し、親から渡された `symbol` を使用
+- ID 取得失敗時の警告メッセージを追加
+
+#### `/admin/data` 管理画面（新規）
+- 単一銘柄取得フォーム（symbol / interval / from / to）
+- 一括取得ボタン（FX / 株 / 全件）
+- 取得状況テーブル（symbol × interval ごとの件数 + 最終時刻）
+
+#### Navigation
+- 「Data」リンクを追加して `/admin/data` へ遷移可能に
+
+#### API 追補
+- `GET /api/candles/labels`：`symbol` クエリで `chartMasterId` 単位にフィルタ可能
+
+#### 検証結果
+- `npm run build`：`✓ Compiled successfully`、Static **16/16**（`/admin/data` 含む）
+- `npm run lint`：エラー 0、警告 19（既存品質）
+
+#### 既知の制約・残件
+- 株の 5m / 4h は Yahoo の履歴制約で実装に含めず（仕様通り）
+- 取引時間外のローソク連続性（市場ギャップ）の Lightweight Charts 側カスタマイズは別タスク
+- バルクラベリング・進捗表示・取得失敗の銘柄リスト表示は最小実装（必要に応じて拡張）

@@ -7,11 +7,13 @@ import type {
   SeriesMarkerShape,
   Time,
 } from "lightweight-charts";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import Button from "@/components/Button";
 import CreateLabeling from "@/components/CreateLabeling";
 import Dropdown, { type FromOption } from "@/components/DropDown";
 import LightweightChartComponent from "@/components/LightweightChartComponent";
+import SymbolSelector from "@/components/SymbolSelector";
+import { type AssetType, INTERVALS_BY_ASSET } from "@/hooks/useMasters";
 import { ChartClickDataContext } from "@/provider/ChartClickDataProvider";
 import type { CandleType } from "@/types/Candle";
 import { findManyBookmark, registerBookmark } from "../api/bookmark/fetch";
@@ -21,95 +23,96 @@ import { getLabelingData, labelingFetch } from "../api/candles/labeling/fetch";
 import { getLabels } from "../api/candles/labels/fetch";
 import { fileCreate } from "../api/file/fetch";
 
+const DEFAULT_FX_SYMBOL = "GBPJPY=X";
+const DEFAULT_STOCK_SYMBOL = "7203.T";
+
 const ChartPage = () => {
   const { chartClickDataState } = useContext(ChartClickDataContext);
   const [isLoading, setIsLoading] = useState(true);
   const [bookMarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [labels, setLabels] = useState<FromOption[]>([]);
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>();
-  const [selectPair, _setSelectPair] = useState("GBPJPY");
+
+  const [assetType, setAssetType] = useState<AssetType>("FX");
+  const [symbol, setSymbol] = useState<string>(DEFAULT_FX_SYMBOL);
+
   const [selectBookmark, setSelectBookmark] = useState<BookmarkData>();
-  const [data, setData] = useState<{
-    data1: CandleType[];
-    data2: CandleType[];
-    data3: CandleType[];
-  }>({
-    data1: [],
-    data2: [],
-    data3: [],
-  });
+  const intervals = useMemo(() => INTERVALS_BY_ASSET[assetType], [assetType]);
+  const [chartData, setChartData] = useState<Record<string, CandleType[]>>({});
+  const [chartIndex, setChartIndex] = useState<Record<string, number>>({});
 
   const [barNum, _setBarNum] = useState(20000);
   const [fromTo, setFromTo] = useState<{ from: Time; to: Time }>({ from: "0", to: "0" });
 
   const [labelData, setLabelData] = useState<SeriesMarker<Time>[]>([]);
-  const [nowIndex, setNowIndex] = useState({ data1: 0, data2: 0, data3: 0 });
 
-  const fetchAllData = async (_labeling_id: string | undefined, lastBookMark: number) => {
-    setIsLoading(true);
-    const result = { data1: [], data2: [], data3: [] };
-    console.log(lastBookMark);
-    result.data1 = await fetchMoreData(
-      "5m",
-      selectPair,
-      lastBookMark.toString(),
-      barNum.toString(),
-    );
-    result.data2 = await fetchMoreData(
-      "1h",
-      selectPair,
-      lastBookMark.toString(),
-      //Math.round(barNum / 12).toString()
-      barNum.toString(),
-    );
+  // 永続化された assetType / symbol を初期ロード
+  useEffect(() => {
+    const at = (localStorage.getItem("asset_type") as AssetType | null) ?? "FX";
+    const sym =
+      localStorage.getItem("symbol") ?? (at === "FX" ? DEFAULT_FX_SYMBOL : DEFAULT_STOCK_SYMBOL);
+    setAssetType(at);
+    setSymbol(sym);
+  }, []);
 
-    result.data3 = await fetchMoreData(
-      "4h",
-      selectPair,
-      lastBookMark.toString(),
-      //Math.round(barNum / 48).toString()
-      barNum.toString(),
-    );
-    setData(result);
-    setIsLoading(false);
+  const handleAssetTypeChange = (next: AssetType) => {
+    setAssetType(next);
+    localStorage.setItem("asset_type", next);
   };
+
+  const handleSymbolChange = (next: string) => {
+    setSymbol(next);
+    localStorage.setItem("symbol", next);
+  };
+
+  const fetchAllData = useCallback(
+    async (lastBookMark: number) => {
+      setIsLoading(true);
+      const result: Record<string, CandleType[]> = {};
+      for (const interval of intervals) {
+        result[interval] = await fetchMoreData(
+          interval,
+          symbol,
+          lastBookMark.toString(),
+          barNum.toString(),
+        );
+      }
+      setChartData(result);
+      const idx: Record<string, number> = {};
+      for (const interval of intervals) idx[interval] = lastBookMark;
+      setChartIndex(idx);
+      setIsLoading(false);
+    },
+    [intervals, symbol, barNum],
+  );
 
   useEffect(() => {
     const firstEffect = async () => {
-      const getLabelsRes = await getLabels();
-
+      const getLabelsRes = await getLabels(symbol);
       setLabels(getLabelsRes.data);
 
-      const bookmarkRes = await findManyBookmark(localStorage.getItem("labeling_id")!);
+      const labelingId = localStorage.getItem("labeling_id");
+      if (labelingId) {
+        try {
+          const bookmarkRes = await findManyBookmark(labelingId);
+          setBookmarks(bookmarkRes ?? []);
 
-      const labelingRes = await getLabelingData(localStorage.getItem("labeling_id")!);
+          const labelingRes = await getLabelingData(labelingId);
+          setLabelData(labelingRes.data ?? []);
 
-      setLabelData(labelingRes.data);
-      setNowIndex({
-        data1: bookmarkRes.slice(-1)[0].index,
-        data2: bookmarkRes.slice(-1)[0].index,
-        data3: bookmarkRes.slice(-1)[0].index,
-      });
-      setBookmarks(bookmarkRes);
-      fetchAllData(
-        getLabelsRes.data.length === 0 ? undefined : localStorage.getItem("labeling_id") || "0",
-        bookmarkRes.slice(-1)[0].index,
-      );
-
-      setSelectedLabel(
-        getLabelsRes.data.length === 0 ? undefined : localStorage.getItem("labeling_id") || "0",
-      );
+          const last = bookmarkRes?.slice(-1)[0]?.index ?? 0;
+          await fetchAllData(last);
+          setSelectedLabel(getLabelsRes.data.length === 0 ? undefined : labelingId);
+          return;
+        } catch (error) {
+          console.error("Failed to load labeling:", error);
+        }
+      }
+      await fetchAllData(0);
+      setSelectedLabel(undefined);
     };
     firstEffect();
-  }, [fetchAllData]);
-
-  useEffect(() => {
-    console.log(chartClickDataState);
-  }, [chartClickDataState]);
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  }, [symbol, fetchAllData]);
 
   const setLabelHandler = (
     time: Time,
@@ -122,17 +125,17 @@ const ChartPage = () => {
       if (position === undefined) {
         return prevData.filter((item) => item.time !== time);
       }
-      const newData = [
-        ...prevData,
-        {
-          time: time,
-          position: position!,
-          color: color!,
-          shape: shape!,
-          text: text!,
-        },
-      ];
+      const newData = [...prevData, { time, position, color: color!, shape: shape!, text: text! }];
       return newData.sort((a, b) => Number(a.time) - Number(b.time));
+    });
+  };
+
+  const handleLoadMore = (interval: string, movement: boolean) => {
+    const current = chartIndex[interval] ?? 0;
+    const nextIndex = movement ? current + barNum : Math.max(0, current - barNum);
+    fetchMoreData(interval, symbol, nextIndex.toString(), barNum.toString()).then((newData) => {
+      setChartData((prev) => ({ ...prev, [interval]: newData }));
+      setChartIndex((prev) => ({ ...prev, [interval]: nextIndex }));
     });
   };
 
@@ -140,162 +143,67 @@ const ChartPage = () => {
     <div>
       <div className="container">
         <div className="column">
-          <h1>5 Minute Chart</h1>
-          {data.data1.length !== 0 && (
-            <LightweightChartComponent
-              data={data.data1}
-              labelData={labelData}
-              loadMoreItems={(movement: boolean) => {
-                if (movement) {
-                  fetchMoreData(
-                    "5m",
-                    selectPair,
-                    (nowIndex.data1 + barNum).toString(),
-                    barNum.toString(),
-                  ).then((newData) => {
-                    console.log("5 chart loading");
-                    setNowIndex({ ...nowIndex, data1: nowIndex.data1 + barNum });
-                    setData((prevData) => ({ ...prevData, data1: newData }));
-                  });
-                } else {
-                  fetchMoreData(
-                    "5m",
-                    selectPair,
-                    (nowIndex.data1 - barNum >= 0 ? nowIndex.data1 - barNum : 0).toString(),
-                    barNum.toString(),
-                  ).then((newData) => {
-                    console.log("5 chart loading");
-                    setNowIndex({
-                      ...nowIndex,
-                      data1: nowIndex.data1 - barNum >= 0 ? nowIndex.data1 - barNum : 0,
-                    });
-                    setData((prevData) => ({ ...prevData, data1: newData }));
-                  });
-                }
-              }}
+          <div className="m-2">
+            <SymbolSelector
+              assetType={assetType}
+              symbol={symbol}
+              onChangeAssetType={handleAssetTypeChange}
+              onChangeSymbol={handleSymbolChange}
             />
-          )}
-          <h1>1 Hour Chart</h1>
-          {data.data2.length !== 0 && (
-            <LightweightChartComponent
-              data={data.data2}
-              labelData={labelData}
-              loadMoreItems={(movement: boolean) => {
-                if (movement) {
-                  fetchMoreData(
-                    "1h",
-                    selectPair,
-                    (nowIndex.data2 + barNum).toString(),
-                    barNum.toString(),
-                    //(nowIndex.data2 + Math.round(barNum / 12)).toString(),
-                    //Math.round(barNum / 12).toString()
-                  ).then((newData) => {
-                    setNowIndex({
-                      ...nowIndex,
-                      data2: nowIndex.data2 + barNum,
-                      //data2: (nowIndex.data2 + Math.round(barNum / 12))
-                    });
-                    setData((prevData) => ({ ...prevData, data2: newData }));
-                  });
-                } else {
-                  fetchMoreData(
-                    "1h",
-                    selectPair,
-                    (nowIndex.data2 - barNum >= 0 ? nowIndex.data2 - barNum : 0).toString(),
-                    barNum.toString(),
-                    // ((nowIndex.data2 - Math.round(barNum / 12)) >= 0 ? nowIndex.data2 - Math.round(barNum / 12) : 0).toString(),
-                    // Math.round(barNum / 12).toString()
-                  ).then((newData) => {
-                    setNowIndex({
-                      ...nowIndex,
-                      data2: nowIndex.data2 - barNum >= 0 ? nowIndex.data2 - barNum : 0,
-                      //data2: (nowIndex.data2 - Math.round(barNum / 12)) >= 0 ? (nowIndex.data2 - Math.round(barNum / 12)) : 0
-                    });
-                    setData((prevData) => ({ ...prevData, data2: newData }));
-                  });
-                }
-              }}
-            />
-          )}
-          <h1>4 Hour Chart</h1>
-          {data.data3.length !== 0 && (
-            <LightweightChartComponent
-              data={data.data3}
-              labelData={labelData}
-              loadMoreItems={(movement: boolean) => {
-                if (movement) {
-                  fetchMoreData(
-                    "4h",
-                    selectPair,
-                    (nowIndex.data3 + barNum).toString(),
-                    barNum.toString(),
-                    // (nowIndex.data3 + Math.round(barNum / 48)).toString(),
-                    // Math.round(barNum / 48).toString()
-                  ).then((newData) => {
-                    setNowIndex({
-                      ...nowIndex,
-                      data3: nowIndex.data2 + barNum,
-                      //data3: nowIndex.data3 + Math.round(barNum / 48)
-                    });
-                    setData((prevData) => ({ ...prevData, data3: newData }));
-                  });
-                } else {
-                  fetchMoreData(
-                    "4h",
-                    selectPair,
-                    (nowIndex.data3 - barNum >= 0 ? nowIndex.data3 - barNum : 0).toString(),
-                    barNum.toString(),
-                    // ((nowIndex.data3 - Math.round(barNum / 48)) >= 0 ? nowIndex.data3 - Math.round(barNum / 48) : 0).toString(),
-                    // Math.round(barNum / 48).toString()
-                  ).then((newData) => {
-                    setNowIndex({
-                      ...nowIndex,
-                      data3: nowIndex.data3 - barNum >= 0 ? nowIndex.data3 - barNum : 0,
-                      //data3: (nowIndex.data3 - Math.round(barNum / 48)) >= 0 ? nowIndex.data3 - Math.round(barNum / 48) : 0
-                    });
-                    setData((prevData) => ({ ...prevData, data3: newData }));
-                  });
-                }
-              }}
-            />
+          </div>
+
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : (
+            intervals.map((interval) => (
+              <div key={interval}>
+                <h1>{interval} Chart</h1>
+                {chartData[interval]?.length ? (
+                  <LightweightChartComponent
+                    data={chartData[interval]}
+                    labelData={labelData}
+                    loadMoreItems={(movement: boolean) => handleLoadMore(interval, movement)}
+                  />
+                ) : (
+                  <div>データがありません（自動取得を実行してください）</div>
+                )}
+              </div>
+            ))
           )}
         </div>
+
         <div className="column">
           <h2>close</h2>
           {chartClickDataState.close}
           <h2>time</h2>
           {chartClickDataState.time.toString()}
-          <br></br>
+          <br />
           <div className="m-2">
             <Button
               text="この時間でBookmark"
               onClick={async () => {
-                const result = await registerBookmark({
+                if (!selectedLabel) return;
+                await registerBookmark({
                   time: chartClickDataState.time,
                   chartLabelingId: Number(selectedLabel),
                 });
-                console.log(result);
               }}
-            ></Button>
+            />
           </div>
           <div className="m-2">
             <h2>bookmark select</h2>
             <Dropdown
-              options={bookMarks.map((value) => {
-                return {
-                  key: value.time.toLocaleString(),
-                  value: value.time.toString(),
-                };
-              })}
+              options={bookMarks.map((value) => ({
+                key: value.time.toLocaleString(),
+                value: value.time.toString(),
+              }))}
               value={selectBookmark?.time.toString() || "-1"}
-              onSelect={(e: any) => {
-                console.log(e.target.value);
-                //localStorage.setItem("chart_id", e.target.value)
+              onSelect={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 setSelectBookmark(
                   bookMarks.filter((value) => e.target.value === value.time.toString())[0],
                 );
               }}
-            ></Dropdown>
+            />
           </div>
 
           <div className="m-2">
@@ -303,20 +211,14 @@ const ChartPage = () => {
             <Dropdown
               options={labels}
               value={selectedLabel || "-1"}
-              onSelect={(e: any) => {
-                console.log(e.target.value);
+              onSelect={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 localStorage.setItem("labeling_id", e.target.value);
                 setSelectedLabel(e.target.value);
               }}
-            ></Dropdown>
+            />
           </div>
           <div className="m-2">
-            <Button
-              text="labelを再配置"
-              onClick={() => {
-                window.location.reload();
-              }}
-            ></Button>
+            <Button text="labelを再配置" onClick={() => window.location.reload()} />
           </div>
 
           <div className="m-2">
@@ -331,84 +233,74 @@ const ChartPage = () => {
           <div className="m-2">
             <Button
               text="買い"
-              onClick={() => {
-                console.log(labelData);
+              onClick={() =>
                 setLabelHandler(
                   chartClickDataState.time,
                   "belowBar",
                   "#2196F3",
                   "arrowUp",
                   `buy ${chartClickDataState.time}`,
-                );
-              }}
-            ></Button>
+                )
+              }
+            />
           </div>
           <div className="m-2">
             <Button
               text="売り"
-              onClick={() => {
+              onClick={() =>
                 setLabelHandler(
                   chartClickDataState.time,
                   "aboveBar",
                   "#e91e63",
                   "arrowDown",
                   `sell ${chartClickDataState.time}`,
-                );
-              }}
-            ></Button>
+                )
+              }
+            />
           </div>
           <div className="m-2">
             <Button
               text="利確"
-              onClick={() => {
+              onClick={() =>
                 setLabelHandler(
                   chartClickDataState.time,
                   "belowBar",
                   "#f68410",
                   "circle",
                   `profit ${chartClickDataState.time}`,
-                );
-              }}
-            ></Button>
+                )
+              }
+            />
           </div>
           <div className="m-2">
-            <Button
-              text="取り消し"
-              onClick={() => {
-                setLabelHandler(chartClickDataState.time);
-              }}
-            ></Button>
+            <Button text="取り消し" onClick={() => setLabelHandler(chartClickDataState.time)} />
           </div>
 
           <Button
             text="登録"
             onClick={() => {
-              labelingFetch(labelData, selectedLabel!);
+              if (selectedLabel) labelingFetch(labelData, selectedLabel);
             }}
-          ></Button>
-          <CreateLabeling></CreateLabeling>
+          />
+          <CreateLabeling symbol={symbol} />
 
           <h3>{fromTo.from.toString()}</h3>
           <h3>{fromTo.to.toString()}</h3>
           <Button
             text="from"
-            onClick={() => {
-              setFromTo({ ...fromTo!, from: chartClickDataState!.time });
-            }}
-          ></Button>
+            onClick={() => setFromTo({ ...fromTo, from: chartClickDataState.time })}
+          />
           <Button
             text="to"
-            onClick={() => {
-              setFromTo({ ...fromTo!, to: chartClickDataState!.time });
-            }}
-          ></Button>
+            onClick={() => setFromTo({ ...fromTo, to: chartClickDataState.time })}
+          />
 
           <Button
             text="ファイルを作成"
             onClick={() => {
-              fileCreate(selectPair, fromTo!.from, fromTo!.to, selectedLabel!);
+              if (selectedLabel) fileCreate(symbol, fromTo.from, fromTo.to, selectedLabel);
             }}
-          ></Button>
+          />
         </div>
       </div>
     </div>

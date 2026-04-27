@@ -1,39 +1,43 @@
 import { useState } from "react";
 import { labelingCreate } from "@/app/api/candles/labeling/create/fetch";
-import Dropdown from "./DropDown";
 import Form from "./Form";
 
-const CreateLabeling = () => {
-  const [selectedData, setSelectedData] = useState({ key: "GBPJPY", value: "GBPJPY" });
-  const [dropData, _setDropData] = useState([{ key: "GBPJPY", value: "GBPJPY" }]);
+interface Props {
+  symbol: string;
+}
+
+const CreateLabeling = ({ symbol }: Props) => {
   const [text, setText] = useState("");
 
-  const handleSelect = (event: any) => {
-    setSelectedData(event.target.value);
-  };
-  const handleButton = async (_e: any) => {
-    const res: any = await labelingCreate({
+  const handleButton = async (_e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!text) {
+      window.alert("ラベル名を入力してください");
+      return;
+    }
+    const res = await labelingCreate({
       labelingName: text,
-      pair: selectedData.value,
+      pair: symbol,
     });
-    localStorage.setItem("labeling_id", String(res.data.id));
-    window.alert("labelを切り替えます");
-    window.location.reload();
+    if (res?.data?.id != null) {
+      localStorage.setItem("labeling_id", String(res.data.id));
+      window.alert("labelを切り替えます");
+      window.location.reload();
+    } else {
+      window.alert(
+        "ラベルの作成に失敗しました（チャートデータが投入されているか確認してください）",
+      );
+    }
   };
 
   return (
     <div className="m-5">
-      <h1>CreateLabeling</h1>
-      <Dropdown value={selectedData.value} options={dropData} onSelect={handleSelect}></Dropdown>
-
+      <h1>CreateLabeling ({symbol})</h1>
       <h3>ラベルの名前</h3>
       <Form
         text={text}
-        handleText={(e: any) => {
-          setText(e.target.value);
-        }}
+        handleText={(e: React.ChangeEvent<HTMLInputElement>) => setText(e.target.value)}
         handleButton={handleButton}
-      ></Form>
+      />
     </div>
   );
 };

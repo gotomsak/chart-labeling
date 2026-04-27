@@ -16,6 +16,9 @@ export default function Navigation() {
           <Button color="inherit" component={Link} href="/chart">
             Chart
           </Button>
+          <Button color="inherit" component={Link} href="/admin/data">
+            Data
+          </Button>
         </Box>
       </Toolbar>
     </AppBar>
