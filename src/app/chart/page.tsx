@@ -8,6 +8,7 @@ import type {
   Time,
 } from "lightweight-charts";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import AutoLabelingPanel from "@/components/AutoLabelingPanel";
 import Button from "@/components/Button";
 import CreateLabeling from "@/components/CreateLabeling";
 import Dropdown, { type FromOption } from "@/components/DropDown";
@@ -281,6 +282,12 @@ const ChartPage = () => {
             onClick={() => {
               if (selectedLabel) labelingFetch(labelData, selectedLabel);
             }}
+          />
+          <AutoLabelingPanel
+            symbol={symbol}
+            assetType={assetType}
+            labelingId={selectedLabel}
+            onApplied={() => window.location.reload()}
           />
           <CreateLabeling symbol={symbol} />
 
