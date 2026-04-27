@@ -142,4 +142,55 @@ src/lib/labeling/
 
 ## 実装メモ
 
-（実装後に追記）
+### Phase 1（ルールベース）実装記録（完了）
+
+#### モジュール構成
+```
+src/lib/labeling/
+├── index.ts                    # 公開エントリ
+├── types.ts                    # 型 + デフォルト config
+├── runner.ts                   # Prisma → ルール実行 → 結果
+├── strategies/
+│   └── ruleBased.ts            # SMA × RSI + 利確
+└── indicators/
+    ├── sma.ts
+    └── rsi.ts
+```
+
+#### インジケータ
+- `sma(values, period)`：シンプル移動平均、期間未満は `null`
+- `rsi(values, period)`：Wilder smoothing 版、期間+1 未満は `null`
+
+#### ルール（`labelByRules`）
+- SMA(short) が SMA(long) を上抜け **かつ** RSI < `rsiUpperBound` → **買い**
+- SMA(short) が SMA(long) を下抜け **かつ** RSI > `rsiLowerBound` → **売り**
+- ポジション保有中に `takeProfitPct` 到達 → **利確**
+- 反対シグナル発生時、保有ポジを **利確** で閉じてから新シグナルを置く
+- デフォルト：FX `0.5%`、株 `2.0%`
+
+#### API エンドポイント
+
+| ルート | 用途 |
+|------|------|
+| `POST /api/labeling/auto/preview` | DB 保存せず結果のみ返却（UI プレビュー） |
+| `POST /api/labeling/auto` | 結果を `Labeling.markers` に反映、`AutoLabelRun` を記録 |
+
+`auto` の `overwrite=false`（デフォルト）時は既存マーカーとマージし、同一時刻は後勝ちで上書き。
+
+#### UI 統合
+- `src/components/AutoLabelingPanel.tsx`（MUI）：
+  - 時間足セレクタ（asset type に応じた候補）
+  - 短期/長期 SMA、RSI 期間、利確 % のテキスト入力
+  - 上書きチェックボックス
+  - **プレビュー** ボタン → 件数を Alert 表示
+  - **ラベルに反映** ボタン → 適用後ページリロード
+- `/chart` の右カラム「登録」ボタン直下に組み込み
+
+#### 検証結果
+- `npm run build`：`✓ Compiled successfully`、Static **18/18**
+- `npm run lint`：エラー 0、警告 19（既存）
+
+#### 既知の制約・残件
+- Phase 2（LLM 補助）と Phase 3（ML モデル）は別タスクで段階的に実装
+- 自動ラベリングのバックテスト指標（勝率・PF）算出 UI は未実装
+- 大量データへの最適化（`createMany` での bulk insert / Prisma raw query）は必要に応じて追加
